@@ -21,7 +21,9 @@ Pebble.addEventListener("ready",
         //if settings is a blank object, send a configuration notification to the user
         if (settings == {}){
             Pebble.showSimpleNotificationOnPebble("Heads up!", "Add stocks in the watchface configuration page in the Pebble phone app.");
-        }
+        };
+
+        sendMessages();
     }
 );
 
