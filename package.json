@@ -1,0 +1,51 @@
+{
+  "name": "stock-ticker",
+  "author": "swansswansswansswanssosoft",
+  "version": "1.0.0",
+  "keywords": [
+    "pebble-app"
+  ],
+  "private": true,
+  "dependencies": {
+    "message-queue-pebble": "^1.0.0",
+    "pebble-battery-bar": "^1.0.10",
+    "pebble-bluetooth-icon": "^1.0.8",
+    "pebble-clay": "^1.0.4"
+  },
+  "pebble": {
+    "displayName": "Stock Ticker",
+    "capabilities": [
+      "configurable"
+    ],
+    "uuid": "06c17ce2-6785-456a-9722-7a0c2e35c38a",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "diorite"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "messageKeys": {
+      "StockDataLineOne": 100,
+      "StockDataLineTwo": 101,
+      "StockSymbol1": 201,
+      "StockSymbol2": 202,
+      "StockSymbol3": 203,
+      "StockSymbol4": 204,
+      "StockSymbol5": 205
+    },
+    "resources": {
+      "media": [
+        {
+          "file": "fonts/type_writer.ttf",
+          "name": "FONT_TYPE_WRITER_8",
+          "targetPlatforms": null,
+          "type": "font"
+        }
+      ]
+    }
+  }
+}

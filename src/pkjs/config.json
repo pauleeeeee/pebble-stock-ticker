@@ -1,0 +1,65 @@
+[
+    { 
+        "type": "heading", 
+        "defaultValue": "Stock Ticker" 
+    },
+    {
+        "type":"section",
+        "items":[
+            {
+                "type": "text",
+                "defaultValue": "This watch face was developed by Rebble discord members swansswansswansswanssosoft and CasualGamerCC. Join the movement today! http://discord.gg/aRUAYFN"
+            },
+            {
+                "type": "heading",
+                "defaultValue": "Configuration"
+            },
+            {
+
+                "type":"input",
+                "messageKey":"APIKey",
+                "label":"Alpha Vantage API Key",
+                "description":"You need an API key from Alpha Vantage. You can get one for free here: https://www.alphavantage.co/support/#api-key",
+                "defaultValue":""
+            },
+            {
+                "type": "text",
+                "defaultValue": "Enter up to five stock symbols in the fields below. Make sure the symbol is spelled correctly and does contain any extra characters like trailing white spaces."
+            },
+            {
+                "type":"input",
+                "messageKey":"StockSymbol1",
+                "label":"Stock Symbol #1",
+                "defaultValue":""
+            },
+            {
+                "type":"input",
+                "messageKey":"StockSymbol2",
+                "label":"Stock Symbol #2",
+                "defaultValue":""
+            },
+            {
+                "type":"input",
+                "messageKey":"StockSymbol3",
+                "label":"Stock Symbol #3",
+                "defaultValue":""
+            },
+            {
+                "type":"input",
+                "messageKey":"StockSymbol4",
+                "label":"Stock Symbol #4",
+                "defaultValue":""
+            },
+            {
+                "type":"input",
+                "messageKey":"StockSymbol5",
+                "label":"Stock Symbol #5",
+                "defaultValue":""
+            }
+        ]
+    },
+    {
+        "type":"submit",
+        "defaultValue":"save"
+    }
+]
