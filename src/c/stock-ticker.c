@@ -123,7 +123,7 @@ static void prv_window_load(Window *window) {
 
   //declare fonts
   //s_big_font = fonts_get_system_font(FONT_KEY_BITHAM_42_LIGHT);
-  s_big_font = fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS);
+  s_big_font = fonts_get_system_font(FONT_KEY_LECO_28_LIGHT_NUMBERS);
   s_medium_font = fonts_get_system_font(FONT_KEY_GOTHIC_18);
   s_small_font = fonts_get_system_font(FONT_KEY_GOTHIC_14);
   s_tiny_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_TYPE_WRITER_8));
@@ -146,7 +146,7 @@ static void prv_window_load(Window *window) {
 
   // create time text layer
   //s_time_layer = text_layer_create(GRect(-2, -8, bounds.size.w-2, bounds.size.h));
-  s_time_layer = text_layer_create(GRect(-1, -4, bounds.size.w-2, bounds.size.h));
+  s_time_layer = text_layer_create(GRect(-4, 1, bounds.size.w-2, bounds.size.h));
   text_layer_set_background_color(s_time_layer, GColorClear);
   text_layer_set_text(s_time_layer, "00:00");
   text_layer_set_text_color(s_time_layer, GColorWhite);
@@ -155,7 +155,7 @@ static void prv_window_load(Window *window) {
   layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
 
   //create date layer
-  s_full_date_layer = text_layer_create(GRect(4, 15, bounds.size.w-4, 24));
+  s_full_date_layer = text_layer_create(GRect(5, 15, bounds.size.w-4, 24));
   text_layer_set_background_color(s_full_date_layer, GColorClear);
   // text_layer_set_text(s_full_date_layer, "--");
   text_layer_set_text_color(s_full_date_layer, GColorWhite);

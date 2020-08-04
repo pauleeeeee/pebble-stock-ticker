@@ -37,22 +37,43 @@ function queryLoop(){
     }
 }
 
-function queryAPI(i){
+var tickerArray = [{},{},{},{},{}];
+
+
+function queryAPI(i, symbol){
     //get the data
-    var dummy = {
-        "StockDataLineOne":"stock n" + i,
-        "StockDataLineTwo":"more data " + i,
+    var req = new XMLHttpRequest();
+    req.open('GET', 'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
+    req.onload = function(e) {
+        if (req.readyState == 4) {
+          // 200 - HTTP OK
+            if(req.status == 200) {
+
+                var response = JSON.parse(req.responseText);
+
+                console.log(JSON.stringify(response));
+
+                var stockData = {
+                    "StockDataLineOne":symbol + " " + response["Global Quote"]["05. price"] + " ( " + response["Global Quote"]["10. change percent"] + " )",
+                    "StockDataLineTwo":"vol " + response["Global Quote"]["06. volume"]
+                }
+                tickerArray[i] = stockData;
+            }
+        }
     }
-    return dummy
+    req.send();
+
 }
 
 function requestStockData(){
-    var tickerArray = [];
-    for (var i = 0; i < 5; i++){
-        tickerArray.push(queryAPI(i));
+    for (var i = 1; i < 6; i++){
+        queryAPI(i-1, settings["StockSymbol"+i]);
     }
     console.log(JSON.stringify(tickerArray));
-    sendMessages(tickerArray);
+
+    //blind faith that all HTTP GETs will resolve in five seconds
+    setTimeout(()=>{sendMessages(tickerArray);},5000);
+    
 }
 
 //example of using messagequeue to send a chain of messages
