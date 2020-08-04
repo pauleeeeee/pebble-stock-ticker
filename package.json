@@ -35,7 +35,8 @@
       "StockSymbol2": 202,
       "StockSymbol3": 203,
       "StockSymbol4": 204,
-      "StockSymbol5": 205
+      "StockSymbol5": 205,
+      "QueryInterval": 206
     },
     "resources": {
       "media": [

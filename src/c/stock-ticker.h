@@ -5,7 +5,7 @@
 #define StockDataLineTwo 101
 
 
-// maybe for a more advance app
+// maybe for a more advanced app
 // #define StockSymbol 100
 // #define StockPriceCurrent 101
 // #define StockPriceOpen 102

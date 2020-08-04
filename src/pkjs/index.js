@@ -9,6 +9,7 @@ var MessageQueue = require('message-queue-pebble');
 //declare global settings variable
 var settings = {};
 
+var lastCall = 0;
 
 //on load function
 Pebble.addEventListener("ready",
@@ -18,25 +19,54 @@ Pebble.addEventListener("ready",
         settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
         console.log(JSON.stringify(settings));
 
+        lastCall = localStorage.getItem('lastCall') || 0;
+
         //if settings is a blank object, send a configuration notification to the user
         if (settings == {}){
-            Pebble.showSimpleNotificationOnPebble("Heads up!", "Add stocks in the watchface configuration page in the Pebble phone app.");
-        };
-
-        sendMessages();
+            Pebble.showSimpleNotificationOnPebble("Heads up!", "Add stocks in the watchface configuration page inside the Pebble phone app.");
+        } else {
+            queryLoop();
+        }
     }
 );
 
+function queryLoop(){
+    // if the last call was more than the specified interval, do a new call
+    if((new Date().getTime() - lastCall) > settings["QueryInterval"]){
+        requestStockData();
+    }
+}
+
+function queryAPI(i){
+    //get the data
+    var dummy = {
+        "StockDataLineOne":"stock n" + i,
+        "StockDataLineTwo":"more data " + i,
+    }
+    return dummy
+}
+
+function requestStockData(){
+    var tickerArray = [];
+    for (var i = 0; i < 5; i++){
+        tickerArray.push(queryAPI(i));
+    }
+    console.log(JSON.stringify(tickerArray));
+    sendMessages(tickerArray);
+}
 
 //example of using messagequeue to send a chain of messages
-function sendMessages(){
+function sendMessages(tickerArray){
     for (var i = 0; i < 5; i++){
-        console.log('sending appmessage');
-        MessageQueue.sendAppMessage({
-            "StockDataLineOne":"stock n" + i,
-            "StockDataLineTwo":"more data " + i,
-        });
+        MessageQueue.sendAppMessage(tickerArray[i]);
     }
+    // for (var i = 0; i < 5; i++){
+    //     console.log('sending appmessage');
+    //     MessageQueue.sendAppMessage({
+    //         "StockDataLineOne":"stock n" + i,
+    //         "StockDataLineTwo":"more data " + i,
+    //     });
+    // }
 }
 
 

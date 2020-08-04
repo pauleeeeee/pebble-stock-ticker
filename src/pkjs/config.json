@@ -55,7 +55,41 @@
                 "messageKey":"StockSymbol5",
                 "label":"Stock Symbol #5",
                 "defaultValue":""
+            },
+            {
+                "type": "select",
+                "messageKey": "QueryInterval",
+                "defaultValue": "5",
+                "label": "Update interval",
+                "description": "How often you want the watchface to update with new stock price data",
+                "options": [
+                  { 
+                    "label": "5 minutes", 
+                    "value": "5"
+                  },
+                  { 
+                    "label": "10 minutes",
+                    "value": "10"
+                  },
+                  {
+                    "label": "15 minutes",
+                    "value": "15"
+                  },
+                  { 
+                    "label": "20 minutes",
+                    "value": "20"
+                  },
+                  { 
+                    "label": "30 minutes",
+                    "value": "30"
+                  },
+                  {
+                    "label": "1 hour",
+                    "value": "60"
+                  }
+                ]
             }
+
         ]
     },
     {
