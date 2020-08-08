@@ -11,6 +11,9 @@ var settings = {};
 
 var lastCall = 0;
 
+var tickerArray = [{},{},{},{},{}];
+
+
 //on load function
 Pebble.addEventListener("ready",
     function(e) {
@@ -30,14 +33,21 @@ Pebble.addEventListener("ready",
     }
 );
 
+Pebble.addEventListener("webviewclosed", function(e){
+    tickerArray = [{},{},{},{},{}];
+
+    requestStockData();    
+})
+
 function queryLoop(){
     // if the last call was more than the specified interval, do a new call
-    if((new Date().getTime() - lastCall) > settings["QueryInterval"]){
+    // do not make a new call if today is a bank holiday
+    if( ((new Date().getTime() - lastCall) > settings["QueryInterval"]) && isBankHoliday == "" && marketPresumedOpen() ){
         requestStockData();
+        lastcall = new Date().getTime();
+        localStorage.setItem('lastCall', lastcall);
     }
 }
-
-var tickerArray = [{},{},{},{},{}];
 
 
 function queryAPI(i, symbol){
@@ -48,15 +58,29 @@ function queryAPI(i, symbol){
         if (req.readyState == 4) {
           // 200 - HTTP OK
             if(req.status == 200) {
-
                 var response = JSON.parse(req.responseText);
-
                 console.log(JSON.stringify(response));
 
-                var stockData = {
-                    "StockDataLineOne":symbol + " " + response["Global Quote"]["05. price"] + " ( " + response["Global Quote"]["10. change percent"] + " )",
-                    "StockDataLineTwo":"vol " + response["Global Quote"]["06. volume"]
+                //make some more reasonable convenience variables
+                var price = Number(response["Global Quote"]["05. price"]);
+                if ( price < 100){
+                    price = price.toFixed(2);
+                } else if (price >= 100 && price < 1000) {
+                    price = price.toFixed(1);
+                } else if (price >= 1000){
+                    price = Math.round(price);
                 }
+                var changePercent = String(response["Global Quote"]["10. change percent"]);
+                changePercent = Number(changePercent.slice(0, changePercent.length-1));
+                changePercent = changePercent.toFixed(2);
+                var volume = response["Global Quote"]["06. volume"];
+
+                var stockData = {
+                    "StockDataLineOne":symbol + " " + price + " ( " + changePercent + "% )",
+                    "StockDataLineTwo":"vol " + volume
+                };
+
+                //this is a gutsy way to do assignment - there are no safeguards for failed or delayed requests 
                 tickerArray[i] = stockData;
             }
         }
@@ -67,32 +91,69 @@ function queryAPI(i, symbol){
 
 function requestStockData(){
     for (var i = 1; i < 6; i++){
-        queryAPI(i-1, settings["StockSymbol"+i]);
+        if (settings["StockSymbol"+i] && settings["StockSymbol"+i] != "") {
+            queryAPI(i-1, settings["StockSymbol"+i]);
+        }
     }
     console.log(JSON.stringify(tickerArray));
 
-    //blind faith that all HTTP GETs will resolve in five seconds
+    //blind faith that all HTTP GETs will resolve without issue in five seconds then send to Pebble
     setTimeout(()=>{sendMessages(tickerArray);},5000);
     
 }
 
-//example of using messagequeue to send a chain of messages
 function sendMessages(tickerArray){
+    //could implement a sorting function here; biggest gainer on top, etc.
+    //would have to parse string - maybe this should go elsewhere
     for (var i = 0; i < 5; i++){
         MessageQueue.sendAppMessage(tickerArray[i]);
     }
-    // for (var i = 0; i < 5; i++){
-    //     console.log('sending appmessage');
-    //     MessageQueue.sendAppMessage({
-    //         "StockDataLineOne":"stock n" + i,
-    //         "StockDataLineTwo":"more data " + i,
-    //     });
-    // }
+}
+
+function marketPresumedOpen() {
+    return true;
 }
 
 
+//source for this function at https://stackoverflow.com/questions/32342753/calculate-holidays-in-javascript
+function isBankHoliday(date) {
+    // static holidays
+    const isDate = (d, month, date) => {
+        return d.getMonth() == (month - 1) && d.getDate() == date;
+    };
+    if (isDate(date, 1, 1)) { return "New Year"; }
+    else if (isDate(date, 7, 4)) { return "Independence Day"; }
+    else if (isDate(date, 11, 11)) { return "Veterans Day"; }
+    else if (isDate(date, 12, 25)) { return "Christmas Day"; }
 
+    // dynamic holidays
+    const isDay = (d, month, day, occurance) => {
+        if (d.getMonth() == (month - 1) && d.getDay() == day) {
+            if (occurance > 0) {
+                return occurance == Math.ceil(d.getDate() / 7);
+            } else {
+                // check last occurance
+                let _d = new Date(d);
+                _d.setDate(d.getDate() + 7);
+                return _d.getMonth() > d.getMonth();
+            }
+        }
+        return false;
+    };
+    if (isDay(date, 1, 1, 3)) { return "MLK Day"; }
+    else if (isDay(date, 2, 1, 3)) { return "Presidents Day"; }
+    else if (isDay(date, 5, 1, -1)) { return "Memorial Day"; }
+    else if (isDay(date, 9, 1, 1)) { return "Labor Day"; }
+    else if (isDay(date, 10, 1, 2)) { return "Columbus Day"; }
+    else if (isDay(date, 11, 4, 4)) { return "Thanksgiving Day"; }
 
+    // Non Business days
+    if (date.getDay() == 0) { return "Sunday"; }
+    else if (date.getDay() == 6) { return "Saturday" }
+
+    // not a holiday
+    return "";
+}
 
 
 
