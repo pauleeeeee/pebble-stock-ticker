@@ -35,10 +35,10 @@ Pebble.addEventListener("ready",
 
 Pebble.addEventListener("webviewclosed", function(e){
     tickerArray = [{},{},{},{},{}];
-
     requestStockData();    
 })
 
+// UNFINISHED
 function queryLoop(){
     // if the last call was more than the specified interval, do a new call
     // do not make a new call if today is a bank holiday
@@ -110,10 +110,6 @@ function sendMessages(tickerArray){
     }
 }
 
-function marketPresumedOpen() {
-    return true;
-}
-
 
 //source for this function at https://stackoverflow.com/questions/32342753/calculate-holidays-in-javascript
 function isBankHoliday(date) {
@@ -154,6 +150,61 @@ function isBankHoliday(date) {
     // not a holiday
     return "";
 }
+
+//modification of below source function
+//returns one of: pre-market, open, after hours, closed
+// UNFINISHED
+function marketStatus() {
+    
+    // create Date object for current location
+    var d = new Date();
+   
+    // convert to msec
+    // add local time zone offset
+    // get UTC time in msec
+    var utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+   
+    // create new Date object for different city
+    // using NYC UTC offset of -4
+    var nycTime = new Date(utc + (3600000 * -4));
+   
+    nycTime.getTime()
+
+}
+
+
+
+// source: https://www.techrepublic.com/article/convert-the-local-time-to-another-time-zone-with-this-javascript/
+// function to calculate local time
+// in a different city
+// given the city's UTC offset
+// function calcTime(city, offset) {
+
+//     // create Date object for current location
+//     d = new Date();
+   
+//     // convert to msec
+//     // add local time zone offset
+//     // get UTC time in msec
+//     utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+   
+//     // create new Date object for different city
+//     // using supplied offset
+//     nd = new Date(utc + (3600000*offset));
+   
+//     // return time as a string
+//     return "The local time in " + city + " is " + nd.toLocaleString();
+
+// }
+
+// // get Bombay time
+// alert(calcTime('Bombay', '+5.5'));
+
+// // get Singapore time
+// alert(calcTime('Singapore', '+8'));
+
+// // get London time
+// alert(calcTime('London', '+1'));
 
 
 
