@@ -37,8 +37,8 @@
       "StockPriceChange": 103,
       "StockVolume": 104,
       "StockPriceHistory": 105,
-      "StockPriceOpen": 106,
-      "NumberOfStocks": 200,
+      "StockVolumeHistory": 106,
+      "DisplayMode": 200,
       "StockMarketStatus": 201
     },
     "resources": {

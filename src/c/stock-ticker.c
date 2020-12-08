@@ -12,7 +12,11 @@ static TextLayer *s_time_layer, *s_full_date_layer, *s_market_status_text_layer;
 static Stock s_stocks[5];
 static GFont s_big_font, s_medium_font, s_small_font, s_tiny_font;
 int stock_index = 0;
+int display_mode = 0; //0 is single; 1 is multi
 char market_status[128];
+static uint8_t s_price_history[144];
+static uint8_t s_volume_history[144];
+
 
 static void update_time() {
   // Get a tm structure
@@ -65,6 +69,23 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
     //APP_LOG(APP_LOG_LEVEL_DEBUG, "got tuple %d", StockMarketStatus);
     persist_write_string(StockMarketStatus, market_status);
   }
+
+  Tuple *display_mode_tuple = dict_find (iter, DisplayMode);
+  if (display_mode_tuple) {
+      display_mode = display_mode_tuple->value->int32;
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "got tuple %d", DisplayMode);
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "value is %d", display_mode);
+  }
+
+
+  Tuple *stock_index_tuple = dict_find (iter, StockIndex);
+  if (stock_index_tuple) {
+      stock_index = stock_index_tuple->value->int32;
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "got tuple %d", StockIndex);
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "value is %d", stock_index);
+  }
+
+
 
 
   // if (counter > 4) {

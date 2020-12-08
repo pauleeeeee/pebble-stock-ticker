@@ -15,7 +15,6 @@
                 "defaultValue": "Configuration"
             },
             {
-
                 "type":"input",
                 "messageKey":"APIKey",
                 "label":"Alpha Vantage API Key",
@@ -57,21 +56,28 @@
                 "defaultValue":""
             },
             {
-                "type": "slider",
-                "messageKey": "NumberOfStocks",
+                "type": "select",
+                "messageKey": "DisplayMode",
                 "defaultValue": "1",
-                "label": "Number of Stocks to Display",
-                "description": "How many of the above stocks do you want to display on the watch at once? There are different layouts for one stock, two stocks, and three+ stocks.",
-                "min" : 1,
-                "max" : 5,
-                "step" : 1
+                "label": "Display Mode",
+                "description": "Selecting single stock mode will show just one stock ticker on the Pebble (Stock Symbol #1) with a rich layout. Selecting multi mode will show you all five stock tickers in a minimalist list.",
+                "options": [
+                    { 
+                        "label": "Single", 
+                        "value": 0
+                    },
+                    { 
+                        "label": "Multi",
+                        "value": 1
+                    }
+                ]
             },
             {
                 "type": "select",
                 "messageKey": "PriceHistoryHorizon",
                 "defaultValue": "1m",
                 "label": "Price History Horizon",
-                "description": "When you select one stock to display, the stock's price history will be graphed. This option allows you to specify the price history's datapoint interval. You can view a minutely chart (one day's price history), a daily chart (one year price history), or a weekly chart (five year price history).",
+                "description": "In single stock mode, the stock's price history will be graphed. This option allows you to specify the price history's datapoint interval. You can view a minutely chart (one day's price history), a daily chart (one year price history), or a weekly chart (five year price history). Price histories are always adjusted for splits.",
                 "options": [
                   { 
                     "label": "Minutely", 

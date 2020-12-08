@@ -10,10 +10,14 @@ var moment = require('moment-timezone');
 //declare global settings variable
 //var settings = {};
 var settings = {
-    APIKey: "IGX5JBZCJJ3ZJVP3",
-    NumberOfStocks: 2,
+    APIKey: "",
+    DisplayMode: 0,
     StockSymbol1: "TSLA",
-    PriceHistoryHorizon: "daily"
+    StockSymbol2: "MDB",
+    StockSymbol3: "GOOGL",
+    StockSymbol4: "CLF",
+    StockSymbol5: "VOO",
+    PriceHistoryHorizon: "minutely"
 };
 
 
@@ -36,7 +40,7 @@ Pebble.addEventListener("ready",
         //     queryLoop();
         // }
 
-        queryAPI(0, "TSLA", 2);
+        queryAPI(0, settings.StockSymbol1, settings.DisplayMode);
         
         //when the watchface loads, check market status; if the status is the same as last check, do nothing; if the status is new, send appmessage
         //console.log(getMarketStatus());
@@ -62,19 +66,12 @@ Pebble.addEventListener('showConfiguration', function(e) {
 Pebble.addEventListener("webviewclosed", function(e){
     console.log('from web view closed:')
     settings = JSON.parse(localStorage.getItem('clay-settings'));
-    console.log(JSON.stringify(settings))
+    console.log(JSON.stringify(settings));
+    Pebble.sendAppMessage({
+        StockMarketStatus: getMarketStatus(),
+        DisplayMode: settings.DisplayMode
+    })
 })
-
-// // UNFINISHED
-// function queryLoop(){
-//     // if the last call was more than the specified interval, do a new call
-//     // do not make a new call if today is a bank holiday
-//     if( ((new Date().getTime() - lastCall) > settings["QueryInterval"]) && isBankHoliday == "" && marketPresumedOpen() ){
-//         requestStockData();
-//         lastcall = new Date().getTime();
-//         localStorage.setItem('lastCall', lastcall);
-//     }
-// }
 
 
 function queryAPI(i, symbol, n){
@@ -82,7 +79,7 @@ function queryAPI(i, symbol, n){
     //get the data
     var req = new XMLHttpRequest();
 
-    if ( n > 1 ) {
+    if ( n == 1 && symbol != '') {
         req.open('GET', 'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
         req.onload = function(e) {
             if (req.readyState == 4) {
@@ -115,7 +112,7 @@ function queryAPI(i, symbol, n){
 
                     
     
-                    console.log(JSON.stringify(stockData));
+                    //console.log(JSON.stringify(stockData));
 
                     Pebble.sendAppMessage(stockData);
     
@@ -123,18 +120,47 @@ function queryAPI(i, symbol, n){
             }
         }
         req.send();
-    } else {
-        req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&interval=1min&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
-        req.onload = function(e) {
-            if (req.readyState == 4) {
-              // 200 - HTTP OK
-                if(req.status == 200) {
-                    var response = JSON.parse(req.responseText);
-                    console.log(JSON.stringify(response));
+    } else if ( n == 0 ) {
+        if (settings.PriceHistoryHorizon == 'minutely'){
+            req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&outputsize=full&interval=1min&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
+            req.onload = function(e) {
+                if (req.readyState == 4) {
+                  // 200 - HTTP OK
+                    if(req.status == 200) {
+                        var response = JSON.parse(req.responseText);
+                        //console.log(JSON.stringify(response));
+                    }
                 }
             }
+            req.send();
+        } else if (settings.PriceHistoryHorizon == 'daily'){
+            req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&outputsize=full&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
+            req.onload = function(e) {
+                if (req.readyState == 4) {
+                  // 200 - HTTP OK
+                    if(req.status == 200) {
+                        var response = JSON.parse(req.responseText);
+                        //console.log(JSON.stringify(response));
+                    }
+                }
+            }
+            req.send();
+        } else if (settings.PriceHistoryHorizon == 'weekly'){
+            req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY_ADJUSTED&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
+            req.onload = function(e) {
+                if (req.readyState == 4) {
+                  // 200 - HTTP OK
+                    if(req.status == 200) {
+                        var response = JSON.parse(req.responseText);
+                        //console.log(JSON.stringify(response));
+                    }
+                }
+            }
+            req.send();
         }
-        req.send();
+
+    } else {
+        Pebble.sendAppMessage({StockMarketStatus:"configuration error"})
     }
 
 }
