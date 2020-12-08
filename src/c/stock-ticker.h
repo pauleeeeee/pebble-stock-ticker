@@ -1,17 +1,20 @@
 #pragma once
 #include <pebble.h>
 
-#define StockDataLineOne 100
-#define StockDataLineTwo 101
+typedef struct {
+    char symbol[6];
+    char price[6];
+    char price_change[8];
+    char price_volume[8];
+    uint8_t price_history[144];
+} Stock;
 
-
-// maybe for a more advanced app
-// #define StockSymbol 100
-// #define StockPriceCurrent 101
-// #define StockPriceOpen 102
-// #define StockPriceHigh 103
-// #define StockPriceLow 104
-// #define StockPriceChangeAsPercentage 105
-// #define StockPriceChangeAsDollar 106
-// #define StockTradingVolume 107
-// #define StockPriceTimeSeries 108
+#define StockIndex 100
+#define StockSymbol 101
+#define StockPrice 102
+#define StockPriceChange 103
+#define StockVolume 104
+#define StockPriceHistory 105
+//#define StockPriceOpen 106
+#define NumberOfStocks 200
+#define StockMarketStatus 201

@@ -8,6 +8,8 @@
   "private": true,
   "dependencies": {
     "message-queue-pebble": "^1.0.0",
+    "moment": "^2.29.1",
+    "moment-timezone": "^0.5.32",
     "pebble-battery-bar": "^1.0.10",
     "pebble-bluetooth-icon": "^1.0.8",
     "pebble-clay": "^1.0.4"
@@ -29,14 +31,15 @@
       "watchface": true
     },
     "messageKeys": {
-      "StockDataLineOne": 100,
-      "StockDataLineTwo": 101,
-      "StockSymbol1": 201,
-      "StockSymbol2": 202,
-      "StockSymbol3": 203,
-      "StockSymbol4": 204,
-      "StockSymbol5": 205,
-      "QueryInterval": 206
+      "StockIndex": 100,
+      "StockSymbol": 101,
+      "StockPrice": 102,
+      "StockPriceChange": 103,
+      "StockVolume": 104,
+      "StockPriceHistory": 105,
+      "StockPriceOpen": 106,
+      "NumberOfStocks": 200,
+      "StockMarketStatus": 201
     },
     "resources": {
       "media": [

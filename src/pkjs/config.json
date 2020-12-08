@@ -57,6 +57,16 @@
                 "defaultValue":""
             },
             {
+                "type": "slider",
+                "messageKey": "NumberOfStocks",
+                "defaultValue": "1",
+                "label": "Number of Stocks to Display",
+                "description": "How many of the above stocks do you want to display on the watch at once? There are different layouts for one stock, two stocks, and three+ stocks.",
+                "min" : 1,
+                "max" : 5,
+                "step" : 1
+            },
+            {
                 "type": "select",
                 "messageKey": "QueryInterval",
                 "defaultValue": "5",
