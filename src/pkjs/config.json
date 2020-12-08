@@ -68,34 +68,22 @@
             },
             {
                 "type": "select",
-                "messageKey": "QueryInterval",
-                "defaultValue": "5",
-                "label": "Update interval",
-                "description": "How often you want the watchface to update with new stock price data",
+                "messageKey": "PriceHistoryHorizon",
+                "defaultValue": "1m",
+                "label": "Price History Horizon",
+                "description": "When you select one stock to display, the stock's price history will be graphed. This option allows you to specify the price history's datapoint interval. You can view a minutely chart (one day's price history), a daily chart (one year price history), or a weekly chart (five year price history).",
                 "options": [
                   { 
-                    "label": "5 minutes", 
-                    "value": "5"
+                    "label": "Minutely", 
+                    "value": "minutely"
                   },
                   { 
-                    "label": "10 minutes",
-                    "value": "10"
+                    "label": "Daily",
+                    "value": "daily"
                   },
                   {
-                    "label": "15 minutes",
-                    "value": "15"
-                  },
-                  { 
-                    "label": "20 minutes",
-                    "value": "20"
-                  },
-                  { 
-                    "label": "30 minutes",
-                    "value": "30"
-                  },
-                  {
-                    "label": "1 hour",
-                    "value": "60"
+                    "label": "Weekly",
+                    "value": "weekly"
                   }
                 ]
             }

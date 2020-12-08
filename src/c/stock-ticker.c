@@ -50,11 +50,8 @@ static void draw_stock_data(){
   //get bounds of the pebble
   Layer *window_layer = window_get_root_layer(s_window);
 
-  //this bounds GRect is very important. It gets modified on each pass through the loop. 
-  //adjusted for padding with 5 and -10
+  //adjusted for padding with 4 and -10
   GRect bounds = GRect(4, 36, (layer_get_bounds(window_layer).size.w - 10), 14);
-
-  
 
 }
 
