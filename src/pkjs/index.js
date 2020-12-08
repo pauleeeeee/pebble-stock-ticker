@@ -10,8 +10,8 @@ var moment = require('moment-timezone');
 //declare global settings variable
 //var settings = {};
 var settings = {
-    APIKey: "",
-    NumberOfStocks: 1,
+    APIKey: "IGX5JBZCJJ3ZJVP3",
+    NumberOfStocks: 2,
     StockSymbol1: "TSLA",
     PriceHistoryHorizon: "daily"
 };
@@ -24,7 +24,7 @@ Pebble.addEventListener("ready",
     function(e) {
 
         //on load, get settings from local storage if they have already been set by clay. If they have not been set, define settings as a blank object.
-        settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
+        //settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
         console.log(JSON.stringify(settings));
 
         //lastCall = localStorage.getItem('lastCall') || 0;
@@ -36,7 +36,7 @@ Pebble.addEventListener("ready",
         //     queryLoop();
         // }
 
-        //queryAPI(0, 'TSLA', 0);
+        queryAPI(0, "TSLA", 2);
         
         //when the watchface loads, check market status; if the status is the same as last check, do nothing; if the status is new, send appmessage
         //console.log(getMarketStatus());
@@ -103,12 +103,7 @@ function queryAPI(i, symbol, n){
                     var changePercent = String(response["Global Quote"]["10. change percent"]);
                     changePercent = Number(changePercent.slice(0, changePercent.length-1));
                     changePercent = changePercent.toFixed(2);
-                    var volume = response["Global Quote"]["06. volume"];
-    
-                    var stockData = {
-                        "StockDataLineOne":symbol + " " + price + " ( " + changePercent + "% )",
-                        "StockDataLineTwo":"vol " + volume
-                    };
+                    var volume = filterNumber(response["Global Quote"]["06. volume"]);
 
                     var stockData = {
                         "StockIndex": i,
@@ -124,7 +119,6 @@ function queryAPI(i, symbol, n){
 
                     Pebble.sendAppMessage(stockData);
     
-                    //don't forget to appmessage it!
                 }
             }
         }
@@ -154,10 +148,13 @@ function requestMultiStockData(){
 }
 
 
+//check the market's status for any given day and time
 function getMarketStatus(){
     var nycTime = moment().tz("America/New_York");
     if(check_holiday(new Date())){
         return "market is closed (holiday)";
+    } else if (nycTime.day() == 0 || nycTime.day() == 6){
+        return "market is closed"
     } else {
         if (nycTime.hours() < 7 || nycTime.hours() > 19) {
             return "market is closed"
@@ -171,7 +168,36 @@ function getMarketStatus(){
     }
 }
 
-//source for these two functions: https://mresoftware.com/holiday_script.htm
+//function to reduce the size of the stock's volume
+function filterNumber(number){
+    var num = Math.abs(number);
+    if (num < 1){
+      return num.toString().slice(1,4)
+    } else if ((num >= 1) && (num < 10)){
+      return num.toString().slice(0,4)
+    } else if ((num >= 10) && (num < 100)){
+      return num.toString().slice(0,4)
+    } else if ((num >= 100) && (num < 1000)){
+      return num.toString().slice(0,3)
+    } else if ((num >= 1000) && (num < 10000)){
+      return num.toString().slice(0,1)+"."+num.toString().slice(1,2)+"k"
+    } else if ((num >= 10000) && (num < 100000)){
+      return num.toString().slice(0,2)+"k"
+    } else if ((num >= 100000) && (num < 1000000)){
+      return num.toString().slice(0,3)+"k"
+    } else if ((num >= 1000000) && (num < 10000000)){
+      return num.toString().slice(0,1)+"."+num.toString().slice(1,2)+"m"
+    } else if ((num >= 10000000) && (num < 100000000)){
+      return num.toString().slice(0,2)+"m"
+    } else if ((num >= 100000000) && (num < 1000000000)){
+      return num.toString().slice(0,3)+"m"
+    } else {
+      return "--";
+    }
+
+}
+
+//source for these check_holiday and GoodFriday functions: https://mresoftware.com/holiday_script.htm
 function check_holiday (dt_date) {  // check for market holidays
     // dt_date = new Date("2017-04-14T12:01:00Z"); // for testing purposes
     // check simple dates (month/date - no leading zeroes)
