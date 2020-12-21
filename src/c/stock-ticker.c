@@ -10,7 +10,7 @@ static BluetoothLayer *s_bluetooth_layer;
 static BatteryBarLayer *s_battery_layer;
 static TextLayer *s_time_layer, *s_full_date_layer, *s_market_status_text_layer;
 static Stock s_stocks[5];
-static GFont s_big_font, s_medium_font, s_small_font, s_tiny_font;
+static GFont s_x_large_font, s_big_font, s_medium_font, s_small_font, s_tiny_font;
 int stock_index = 0;
 int display_mode = 0; //0 is single; 1 is multi
 char market_status[128];
@@ -50,13 +50,31 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   update_time();
 }
 
-static void draw_stock_data(){
+static Layer *s_single_view_layer;
+
+static void s_single_view_layer_update_proc(Layer *layer, GContext *ctx){
+  graphics_context_set_fill_color(ctx, GColorWhite);
+  GRect box = layer_get_bounds(layer);
+  graphics_fill_rect(ctx, box, 0, GCornersAll);
+
+  graphics_context_set_text_color(ctx, GColorBlack);
+  graphics_draw_text(ctx, s_stocks[0].symbol, s_x_large_font, box, GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+
+}
+
+static void draw_stock_data_single_view(){
   //get bounds of the pebble
   Layer *window_layer = window_get_root_layer(s_window);
+  GRect window_bounds = layer_get_bounds(window_layer);
 
-  //adjusted for padding with 4 and -10
-  GRect bounds = GRect(4, 36, (layer_get_bounds(window_layer).size.w - 10), 14);
+  //adjusted to give 2px of padding
+  GRect bounds = GRect(2, 48, (window_bounds.size.w - 4), window_bounds.size.h-47-2);
+  //APP_LOG(APP_LOG_LEVEL_DEBUG, "stock data view height is %d", bounds.size.h);
+  //currently 118
 
+  s_single_view_layer = layer_create(bounds);
+  layer_set_update_proc(s_single_view_layer, s_single_view_layer_update_proc);
+  layer_add_child(window_layer, s_single_view_layer);
 }
 
 
@@ -72,20 +90,51 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
 
   Tuple *display_mode_tuple = dict_find (iter, DisplayMode);
   if (display_mode_tuple) {
-      display_mode = display_mode_tuple->value->int32;
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "got tuple %d", DisplayMode);
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "value is %d", display_mode);
+    display_mode = display_mode_tuple->value->int32;
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "got tuple %d", DisplayMode);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "value is %d", display_mode);
   }
 
 
   Tuple *stock_index_tuple = dict_find (iter, StockIndex);
   if (stock_index_tuple) {
-      stock_index = stock_index_tuple->value->int32;
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "got tuple %d", StockIndex);
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "value is %d", stock_index);
+    stock_index = stock_index_tuple->value->int32;
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "got tuple %d", StockIndex);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "value is %d", stock_index);
   }
 
+  Tuple *stock_symbol_tuple = dict_find (iter, StockSymbol);
+  if (stock_symbol_tuple){
+    strncpy(s_stocks[stock_index].symbol, stock_symbol_tuple->value->cstring, sizeof(s_stocks[stock_index].symbol));
+    //persist_write_string(StockSymbol, s_stocks[stock_index].symbol);
+  }
 
+  Tuple *stock_price_tuple = dict_find (iter, StockPrice);
+  if (stock_price_tuple){
+    strncpy(s_stocks[stock_index].price, stock_price_tuple->value->cstring, sizeof(s_stocks[stock_index].price));
+  }
+
+  Tuple *stock_price_change_tuple = dict_find (iter, StockPriceChange);
+  if (stock_price_change_tuple){
+    strncpy(s_stocks[stock_index].price_change, stock_price_change_tuple->value->cstring, sizeof(s_stocks[stock_index].price_change));
+  }
+
+  Tuple *stock_volume_tuple = dict_find (iter, StockVolume);
+  if (stock_volume_tuple){
+    strncpy(s_stocks[stock_index].volume, stock_volume_tuple->value->cstring, sizeof(s_stocks[stock_index].volume));
+  }
+
+  Tuple *stock_price_history_tuple = dict_find (iter, StockPriceHistory);
+  if (stock_price_history_tuple) {
+      memcpy(s_price_history, stock_price_history_tuple->value->data, 144);
+      persist_write_data(StockPriceHistory, s_price_history, 144);
+  }
+
+  Tuple *stock_volume_history_tuple = dict_find (iter, StockVolumeHistory);
+  if (stock_volume_history_tuple) {
+      memcpy(s_volume_history, stock_volume_history_tuple->value->data, 144);
+      persist_write_data(StockVolumeHistory, s_volume_history, 144);
+  }
 
 
   // if (counter > 4) {
@@ -93,6 +142,9 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
   // } else if (counter == 4) {
   //   //draw_stock_data();
   // }
+
+
+  draw_stock_data_single_view();
 
 }
 
@@ -109,6 +161,7 @@ static void prv_window_load(Window *window) {
 
   //declare fonts
   //s_big_font = fonts_get_system_font(FONT_KEY_BITHAM_42_LIGHT);
+  s_x_large_font = fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK);
   s_big_font = fonts_get_system_font(FONT_KEY_LECO_28_LIGHT_NUMBERS);
   s_medium_font = fonts_get_system_font(FONT_KEY_GOTHIC_18);
   s_small_font = fonts_get_system_font(FONT_KEY_GOTHIC_14);
@@ -163,6 +216,7 @@ static void prv_window_load(Window *window) {
   } 
 
   //draw_stock_data();
+  draw_stock_data_single_view();
 
 }
 

@@ -4,6 +4,9 @@ var clayConfig = require('./config.json');
 var clay = new Clay(clayConfig, null, { autoHandleEvents: false });
 var moment = require('moment-timezone');
 
+//helper libraries
+var _ = require('lodash');
+
 //include MessageQueue system
 // var MessageQueue = require('message-queue-pebble');
 
@@ -39,7 +42,6 @@ Pebble.addEventListener("ready",
         // } else {
         //     queryLoop();
         // }
-
         queryAPI(0, settings.StockSymbol1, settings.DisplayMode);
         
         //when the watchface loads, check market status; if the status is the same as last check, do nothing; if the status is new, send appmessage
@@ -90,13 +92,8 @@ function queryAPI(i, symbol, n){
     
                     //make some more reasonable convenience variables
                     var price = Number(response["Global Quote"]["05. price"]);
-                    if ( price < 100){
-                        price = price.toFixed(2);
-                    } else if (price >= 100 && price < 1000) {
-                        price = price.toFixed(1);
-                    } else if (price >= 1000){
-                        price = Math.round(price);
-                    }
+                    price = formatStockPrice(price);
+
                     var changePercent = String(response["Global Quote"]["10. change percent"]);
                     changePercent = Number(changePercent.slice(0, changePercent.length-1));
                     changePercent = changePercent.toFixed(2);
@@ -129,6 +126,19 @@ function queryAPI(i, symbol, n){
                     if(req.status == 200) {
                         var response = JSON.parse(req.responseText);
                         //console.log(JSON.stringify(response));
+                        //console.log(_.values(response["Time Series (1min)"]).length);
+                        var price = Number(_.values(response["Time Series (1min)"])[0]["4. close"]);
+                        var changePercent = "1.00%";
+                        var volume = _.values(response["Time Series (1min)"])[0]["5. volume"];
+                        var stockData = {
+                            "StockIndex": i,
+                            "StockSymbol": symbol,
+                            "StockPrice": formatStockPrice(price),
+                            "StockPriceChange": formatChangePercent(changePercent),
+                            "StockVolume": filterNumber(volume)
+                        }
+                        console.log(JSON.stringify(stockData));
+                        Pebble.sendAppMessage(stockData);
                     }
                 }
             }
@@ -192,6 +202,25 @@ function getMarketStatus(){
             return "market is open"
         }
     }
+}
+
+//helper function to format change percent
+function formatChangePercent(changePercent){
+    changePercent = Number(changePercent.slice(0, changePercent.length-1));
+    changePercent = changePercent.toFixed(2);
+    return changePercent;
+}
+
+//helper function to format the stock price
+function formatStockPrice(price){
+    if ( price < 100){
+        price = price.toFixed(2);
+    } else if (price >= 100 && price < 1000) {
+        price = price.toFixed(1);
+    } else if (price >= 1000){
+        price = Math.round(price);
+    }
+    return price;
 }
 
 //function to reduce the size of the stock's volume
@@ -316,6 +345,87 @@ function GoodFriday(Y) {  // calculates Easter Sunday and subtracts 2 days
         }
     return parseInt(M, 10) + '/' + parseInt(D, 10);  // return without any leading zeros
 }
+
+
+// polyfill for ancient iOS JS environment
+// Production steps of ECMA-262, Edition 6, 22.1.2.1
+if (!Array.from) {
+    Array.from = (function () {
+      var toStr = Object.prototype.toString;
+      var isCallable = function (fn) {
+        return typeof fn === 'function' || toStr.call(fn) === '[object Function]';
+      };
+      var toInteger = function (value) {
+        var number = Number(value);
+        if (isNaN(number)) { return 0; }
+        if (number === 0 || !isFinite(number)) { return number; }
+        return (number > 0 ? 1 : -1) * Math.floor(Math.abs(number));
+      };
+      var maxSafeInteger = Math.pow(2, 53) - 1;
+      var toLength = function (value) {
+        var len = toInteger(value);
+        return Math.min(Math.max(len, 0), maxSafeInteger);
+      };
+  
+      // The length property of the from method is 1.
+      return function from(arrayLike/*, mapFn, thisArg */) {
+        // 1. Let C be the this value.
+        var C = this;
+  
+        // 2. Let items be ToObject(arrayLike).
+        var items = Object(arrayLike);
+  
+        // 3. ReturnIfAbrupt(items).
+        if (arrayLike == null) {
+          throw new TypeError('Array.from requires an array-like object - not null or undefined');
+        }
+  
+        // 4. If mapfn is undefined, then let mapping be false.
+        var mapFn = arguments.length > 1 ? arguments[1] : void undefined;
+        var T;
+        if (typeof mapFn !== 'undefined') {
+          // 5. else
+          // 5. a If IsCallable(mapfn) is false, throw a TypeError exception.
+          if (!isCallable(mapFn)) {
+            throw new TypeError('Array.from: when provided, the second argument must be a function');
+          }
+  
+          // 5. b. If thisArg was supplied, let T be thisArg; else let T be undefined.
+          if (arguments.length > 2) {
+            T = arguments[2];
+          }
+        }
+  
+        // 10. Let lenValue be Get(items, "length").
+        // 11. Let len be ToLength(lenValue).
+        var len = toLength(items.length);
+  
+        // 13. If IsConstructor(C) is true, then
+        // 13. a. Let A be the result of calling the [[Construct]] internal method 
+        // of C with an argument list containing the single item len.
+        // 14. a. Else, Let A be ArrayCreate(len).
+        var A = isCallable(C) ? Object(new C(len)) : new Array(len);
+  
+        // 16. Let k be 0.
+        var k = 0;
+        // 17. Repeat, while k < len… (also steps a - h)
+        var kValue;
+        while (k < len) {
+          kValue = items[k];
+          if (mapFn) {
+            A[k] = typeof T === 'undefined' ? mapFn(kValue, k) : mapFn.call(T, kValue, k);
+          } else {
+            A[k] = kValue;
+          }
+          k += 1;
+        }
+        // 18. Let putStatus be Put(A, "length", len, true).
+        A.length = len;
+        // 20. Return A.
+        return A;
+      };
+    }());
+  }
 
 
 

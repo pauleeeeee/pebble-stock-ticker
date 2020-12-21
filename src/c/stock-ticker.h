@@ -5,7 +5,7 @@ typedef struct {
     char symbol[6];
     char price[6];
     char price_change[8];
-    char price_volume[8];
+    char volume[8];
 } Stock;
 
 #define StockIndex 100
