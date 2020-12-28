@@ -4,18 +4,20 @@
 #include <pebble-battery-bar/pebble-battery-bar.h>
 #include <pebble-bluetooth-icon/pebble-bluetooth-icon.h>
 #include "./stock-ticker.h"
+#include "./dither.h"
+
 
 static Window *s_window;
 static BluetoothLayer *s_bluetooth_layer;
 static BatteryBarLayer *s_battery_layer;
 static TextLayer *s_time_layer, *s_full_date_layer, *s_market_status_text_layer;
 static Stock s_stocks[5];
-static GFont s_x_large_font, s_big_font, s_medium_font, s_small_font, s_tiny_font;
+static GFont s_symbol_font, s_x_large_font, s_big_font, s_medium_font, s_small_font, s_tiny_font;
 int stock_index = 0;
 int display_mode = 0; //0 is single; 1 is multi
 char market_status[128];
-static uint8_t s_price_history[144];
-static uint8_t s_volume_history[144];
+static uint8_t s_price_history[140];
+static uint8_t s_volume_history[140];
 
 
 static void update_time() {
@@ -53,12 +55,68 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 static Layer *s_single_view_layer;
 
 static void s_single_view_layer_update_proc(Layer *layer, GContext *ctx){
-  graphics_context_set_fill_color(ctx, GColorWhite);
-  GRect box = layer_get_bounds(layer);
-  graphics_fill_rect(ctx, box, 0, GCornersAll);
+  // graphics_context_set_fill_color(ctx, GColorWhite);
+  // graphics_context_set_fill_color(ctx, GColorWhite);
 
+  GRect box = layer_get_bounds(layer);
+  //APP_LOG(APP_LOG_LEVEL_DEBUG, "stock data view height is %d", box.size.h);
+  //APP_LOG(APP_LOG_LEVEL_DEBUG, "and width is is %d", box.size.w);
+
+  graphics_context_set_stroke_width(ctx, 1);
+
+  // graphics_fill_rect(ctx, box, 0, GCornersAll);
+  if ((s_price_history[0] + s_price_history[1] + s_price_history[2] )!= 0) {
+
+    //draw dithering
+    //draw_gradient_rect(ctx, box, GColorBlack, GColorWhite, BOTTOM_TO_TOP);
+    draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y, box.size.w, 10), GColorBlack, GColorWhite, DITHER_90_PERCENT);
+    draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+10, box.size.w, 20), GColorBlack, GColorWhite, DITHER_70_PERCENT);
+    draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+30, box.size.w, 20), GColorBlack, GColorWhite, DITHER_40_PERCENT);
+    draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+50, box.size.w, 20), GColorBlack, GColorWhite, DITHER_30_PERCENT);
+    draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+70, box.size.w, 20), GColorBlack, GColorWhite, DITHER_20_PERCENT);
+    draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+90, box.size.w, 10), GColorBlack, GColorWhite, DITHER_10_PERCENT);
+
+    //mask dithering with black line draws
+    graphics_context_set_stroke_color(ctx, GColorBlack);
+    for (int i = 0; i <= 139; i++){
+      graphics_draw_line(ctx, GPoint(box.origin.x + i, box.origin.y), GPoint(box.origin.x + i, s_price_history[i]-10));
+    }
+
+  }
+
+  //draw volume and price history
+  int offset = 0;
+  graphics_context_set_stroke_color(ctx, GColorWhite);
+  graphics_draw_line(ctx, GPoint(box.origin.x, box.size.h - offset), GPoint(box.size.w, box.size.h - offset));
+  for (int i = 0; i < 139; i++){
+    graphics_draw_line(ctx, GPoint(box.origin.x + i, box.size.h - offset), GPoint(box.origin.x + i, box.size.h - offset - s_volume_history[i]));
+    graphics_draw_line(ctx, GPoint(box.origin.x + i, s_price_history[i]-10), GPoint(box.origin.x + i + 1, s_price_history[i + 1]-10));
+  }
+  graphics_draw_line(ctx, GPoint(138, box.size.h - offset), GPoint(138, box.size.h - offset - s_volume_history[139]));
+
+  //draw symbol text
+  graphics_context_set_text_color(ctx, GColorWhite);
+  graphics_draw_text(ctx, s_stocks[0].symbol, s_symbol_font, GRect(box.origin.x, box.origin.y+10, box.size.w, box.size.h-10), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  
+  //draw black bubble behind price
   graphics_context_set_text_color(ctx, GColorBlack);
-  graphics_draw_text(ctx, s_stocks[0].symbol, s_x_large_font, box, GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x+2, box.origin.y+34, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x-2, box.origin.y+34, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x, box.origin.y+32, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x+2, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x-2, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x-2, box.origin.y+32, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x+2, box.origin.y+32, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+
+  //black oval behind small price change text
+  graphics_context_set_fill_color(ctx, GColorBlack);
+  graphics_fill_rect(ctx, GRect((box.size.w/2)-25,box.origin.y+64, 50, 15), 4, GCornersAll);
+
+  //draw price and price change
+  graphics_context_set_text_color(ctx, GColorWhite);
+  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x, box.origin.y+34, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stocks[0].price_change, s_small_font, GRect(box.origin.x, box.origin.y+62, box.size.w, box.size.h-62), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
 
 }
 
@@ -126,14 +184,14 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
 
   Tuple *stock_price_history_tuple = dict_find (iter, StockPriceHistory);
   if (stock_price_history_tuple) {
-      memcpy(s_price_history, stock_price_history_tuple->value->data, 144);
-      persist_write_data(StockPriceHistory, s_price_history, 144);
+      memcpy(s_price_history, stock_price_history_tuple->value->data, 140);
+      persist_write_data(StockPriceHistory, s_price_history, 140);
   }
 
   Tuple *stock_volume_history_tuple = dict_find (iter, StockVolumeHistory);
   if (stock_volume_history_tuple) {
-      memcpy(s_volume_history, stock_volume_history_tuple->value->data, 144);
-      persist_write_data(StockVolumeHistory, s_volume_history, 144);
+      memcpy(s_volume_history, stock_volume_history_tuple->value->data, 140);
+      persist_write_data(StockVolumeHistory, s_volume_history, 140);
   }
 
 
@@ -163,9 +221,13 @@ static void prv_window_load(Window *window) {
   //s_big_font = fonts_get_system_font(FONT_KEY_BITHAM_42_LIGHT);
   s_x_large_font = fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK);
   s_big_font = fonts_get_system_font(FONT_KEY_LECO_28_LIGHT_NUMBERS);
-  s_medium_font = fonts_get_system_font(FONT_KEY_GOTHIC_18);
+  s_medium_font = fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
   s_small_font = fonts_get_system_font(FONT_KEY_GOTHIC_14);
   s_tiny_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_TYPE_WRITER_8));
+  s_symbol_font = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_DOT_DIGITAL_26));
+
+  //dots font source https://www.dafont.com/advanced-dot-digital-7.font
+
 
   //create battery bar
   s_battery_layer = battery_bar_layer_create();
@@ -210,7 +272,7 @@ static void prv_window_load(Window *window) {
   text_layer_set_font(s_market_status_text_layer, s_small_font);
   text_layer_set_text_alignment(s_market_status_text_layer, GTextAlignmentLeft);
   layer_add_child(window_layer, text_layer_get_layer(s_market_status_text_layer));
-  text_layer_set_text(s_market_status_text_layer, "unknown");
+  text_layer_set_text(s_market_status_text_layer, "loading...");
   if(persist_exists(StockMarketStatus)){
     persist_read_string(StockMarketStatus, market_status, sizeof(market_status));
   } 

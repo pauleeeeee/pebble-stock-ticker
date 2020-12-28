@@ -49,6 +49,12 @@
           "name": "FONT_TYPE_WRITER_8",
           "targetPlatforms": null,
           "type": "font"
+        },
+        {
+          "file": "fonts/advanced_dot_digital.ttf",
+          "name": "DOT_DIGITAL_26",
+          "targetPlatforms": null,
+          "type": "font"
         }
       ]
     }

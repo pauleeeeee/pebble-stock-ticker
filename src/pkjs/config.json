@@ -1,14 +1,14 @@
 [
     { 
         "type": "heading", 
-        "defaultValue": "Stock Ticker" 
+        "defaultValue": "StockFace" 
     },
     {
         "type":"section",
         "items":[
             {
                 "type": "text",
-                "defaultValue": "This watch face was developed by Rebble discord members swansswansswansswanssosoft and CasualGamerCC. Join the movement today! http://discord.gg/aRUAYFN"
+                "defaultValue": "This watch face was developed by swansswansswansswanssosoft, a member of the Rebble community. Join the movement today! http://discord.gg/aRUAYFN"
             },
             {
                 "type": "heading",
@@ -22,74 +22,34 @@
                 "defaultValue":""
             },
             {
-                "type": "text",
-                "defaultValue": "Enter up to five stock symbols in the fields below. Make sure the symbol is spelled correctly and does contain any extra characters like trailing white spaces."
-            },
-            {
                 "type":"input",
                 "messageKey":"StockSymbol1",
-                "label":"Stock Symbol #1",
-                "defaultValue":""
-            },
-            {
-                "type":"input",
-                "messageKey":"StockSymbol2",
-                "label":"Stock Symbol #2",
-                "defaultValue":""
-            },
-            {
-                "type":"input",
-                "messageKey":"StockSymbol3",
-                "label":"Stock Symbol #3",
-                "defaultValue":""
-            },
-            {
-                "type":"input",
-                "messageKey":"StockSymbol4",
-                "label":"Stock Symbol #4",
-                "defaultValue":""
-            },
-            {
-                "type":"input",
-                "messageKey":"StockSymbol5",
-                "label":"Stock Symbol #5",
-                "defaultValue":""
-            },
-            {
-                "type": "select",
-                "messageKey": "DisplayMode",
-                "defaultValue": "1",
-                "label": "Display Mode",
-                "description": "Selecting single stock mode will show just one stock ticker on the Pebble (Stock Symbol #1) with a rich layout. Selecting multi mode will show you all five stock tickers in a minimalist list.",
-                "options": [
-                    { 
-                        "label": "Single", 
-                        "value": 0
-                    },
-                    { 
-                        "label": "Multi",
-                        "value": 1
-                    }
-                ]
+                "label":"Stock Symbol",
+                "defaultValue":"VOO",
+                "description": "Enter the stock symbol of your choice. Make sure the symbol is spelled correctly and does contain any extra characters like trailing white spaces. You can add pretty much any publicly traded equity from the major exchanges."
             },
             {
                 "type": "select",
                 "messageKey": "PriceHistoryHorizon",
-                "defaultValue": "1m",
+                "defaultValue": "1year",
                 "label": "Price History Horizon",
-                "description": "In single stock mode, the stock's price history will be graphed. This option allows you to specify the price history's datapoint interval. You can view a minutely chart (one day's price history), a daily chart (one year price history), or a weekly chart (five year price history). Price histories are always adjusted for splits.",
+                "description": "How far back do you want to see the price history? Price histories are always adjusted for splits.",
                 "options": [
                   { 
-                    "label": "Minutely", 
-                    "value": "minutely"
+                    "label": "5 days", 
+                    "value": "5days"
                   },
                   { 
-                    "label": "Daily",
-                    "value": "daily"
+                    "label": "1 month",
+                    "value": "1month"
                   },
                   {
-                    "label": "Weekly",
-                    "value": "weekly"
+                    "label": "1 year",
+                    "value": "1year"
+                  },
+                  {
+                    "label": "5 years",
+                    "value": "5years"
                   }
                 ]
             }

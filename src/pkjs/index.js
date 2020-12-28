@@ -1,7 +1,7 @@
 //require clay package for settings and instantiate it
 var Clay = require('pebble-clay');
 var clayConfig = require('./config.json');
-var clay = new Clay(clayConfig, null, { autoHandleEvents: false });
+var clay = new Clay(clayConfig, null, { autoHandleEvents: true });
 var moment = require('moment-timezone');
 
 //helper libraries
@@ -11,17 +11,17 @@ var _ = require('lodash');
 // var MessageQueue = require('message-queue-pebble');
 
 //declare global settings variable
-//var settings = {};
-var settings = {
-    APIKey: "",
-    DisplayMode: 0,
-    StockSymbol1: "TSLA",
-    StockSymbol2: "MDB",
-    StockSymbol3: "GOOGL",
-    StockSymbol4: "CLF",
-    StockSymbol5: "VOO",
-    PriceHistoryHorizon: "minutely"
-};
+var settings = {};
+// var settings = {
+//     APIKey: "",
+//     DisplayMode: 0,
+//     StockSymbol1: "AMPE",
+//     StockSymbol2: "MDB",
+//     StockSymbol3: "GOOGL",
+//     StockSymbol4: "CLF",
+//     StockSymbol5: "VOO",
+//     PriceHistoryHorizon: "1year"
+// };
 
 
 var lastCall = 0;
@@ -31,29 +31,34 @@ Pebble.addEventListener("ready",
     function(e) {
 
         //on load, get settings from local storage if they have already been set by clay. If they have not been set, define settings as a blank object.
-        //settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
+        settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
         console.log(JSON.stringify(settings));
 
         //lastCall = localStorage.getItem('lastCall') || 0;
 
-        // //if settings is a blank object, send a configuration notification to the user
-        // if (settings == {}){
-        //     Pebble.showSimpleNotificationOnPebble("Heads up!", "Add stocks in the watchface configuration page inside the Pebble phone app.");
-        // } else {
-        //     queryLoop();
-        // }
-        queryAPI(0, settings.StockSymbol1, settings.DisplayMode);
+        //if settings is a blank object, send a configuration notification to the user
+        if (settings == {}){
+            //Pebble.showSimpleNotificationOnPebble("Heads up!", "Add stocks in the watchface configuration page inside the Pebble phone app.");
+            Pebble.sendAppMessage({
+                "StockMarketStatus": "needs configuration"
+            });
+        } else {
+            //queryLoop();
+            getSimpleQuote(settings.StockSymbol1);
+            getPriceHistory(settings.StockSymbol1);
+        }
+
         
         //when the watchface loads, check market status; if the status is the same as last check, do nothing; if the status is new, send appmessage
         //console.log(getMarketStatus());
-        var marketStatus = getMarketStatus();
-        if (localStorage.getItem('lastMarketStatus') != marketStatus) {
-            Pebble.sendAppMessage({
-                StockMarketStatus: marketStatus
-            }, function(){
-                localStorage.setItem('lastMarketStatus', marketStatus)
-            });
-        }
+        // var marketStatus = getMarketStatus();
+        // if (localStorage.getItem('lastMarketStatus') != marketStatus) {
+        //     Pebble.sendAppMessage({
+        //         StockMarketStatus: marketStatus
+        //     }, function(){
+        //         localStorage.setItem('lastMarketStatus', marketStatus)
+        //     });
+        // }
         
 
     }
@@ -66,122 +71,232 @@ Pebble.addEventListener('showConfiguration', function(e) {
 });
 
 Pebble.addEventListener("webviewclosed", function(e){
-    console.log('from web view closed:')
+    console.log('from web view closed:');
+    //// settings = clay.getSettings(e.response, true);
+    //// localStorage.setItem("settings", JSON.stringify(settings));
     settings = JSON.parse(localStorage.getItem('clay-settings'));
     console.log(JSON.stringify(settings));
     Pebble.sendAppMessage({
-        StockMarketStatus: getMarketStatus(),
-        DisplayMode: settings.DisplayMode
-    })
-})
+        StockMarketStatus: "loading..."
+    });
 
+    getSimpleQuote(settings.StockSymbol1);
+    getPriceHistory(settings.StockSymbol1);
+});
 
-function queryAPI(i, symbol, n){
-
-    //get the data
+function getSimpleQuote(symbol){
     var req = new XMLHttpRequest();
+    req.open('GET', 'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
+    req.onload = function(e) {
+        if (req.readyState == 4) {
+          // 200 - HTTP OK
+            if(req.status == 200) {
+                var response = JSON.parse(req.responseText);
+                console.log(JSON.stringify(response));
 
-    if ( n == 1 && symbol != '') {
-        req.open('GET', 'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
+                //make some more reasonable convenience variables
+                var price = Number(response["Global Quote"]["05. price"]);
+                price = formatStockPrice(price);
+
+                var changePercent = String(response["Global Quote"]["10. change percent"]);
+                changePercent = formatChangePercent(changePercent);
+                // changePercent = Number(changePercent.slice(0, changePercent.length-1));
+                // changePercent = changePercent.toFixed(2);
+                var volume = filterNumber(response["Global Quote"]["06. volume"]);
+
+                var stockData = {
+                    "StockIndex": 0,
+                    "StockSymbol": symbol,
+                    "StockPrice": price,
+                    "StockPriceChange": changePercent,
+                    "StockVolume": volume,
+                    "StockMarketStatus": getMarketStatus()
+                }
+
+                console.log(JSON.stringify(stockData));
+
+                Pebble.sendAppMessage(stockData);
+
+            }
+        }
+    }
+    req.send();
+
+}
+
+function getPriceHistory(symbol){
+    var req = new XMLHttpRequest();
+    if (settings.PriceHistoryHorizon == '1week' ){
+        req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&outputsize=full&interval=5min&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
         req.onload = function(e) {
             if (req.readyState == 4) {
               // 200 - HTTP OK
                 if(req.status == 200) {
                     var response = JSON.parse(req.responseText);
-                    console.log(JSON.stringify(response));
-    
-                    //make some more reasonable convenience variables
-                    var price = Number(response["Global Quote"]["05. price"]);
-                    price = formatStockPrice(price);
-
-                    var changePercent = String(response["Global Quote"]["10. change percent"]);
-                    changePercent = Number(changePercent.slice(0, changePercent.length-1));
-                    changePercent = changePercent.toFixed(2);
-                    var volume = filterNumber(response["Global Quote"]["06. volume"]);
-
+                    //console.log(JSON.stringify(response));
+                    //console.log(_.values(response["Time Series (5min)"]).length);
+                    var price = Number(_.values(response["Time Series (5min)"])[0]["4. close"]);
+                    var changePercent = "1.00%";
+                    var volume = _.values(response["Time Series (5min)"])[0]["5. volume"];
                     var stockData = {
                         "StockIndex": i,
                         "StockSymbol": symbol,
-                        "StockPrice": price,
-                        "StockPriceChange": changePercent,
-                        "StockVolume": volume
+                        "StockPrice": formatStockPrice(price),
+                        "StockPriceChange": formatChangePercent(changePercent),
+                        "StockVolume": filterNumber(volume),
+                        "StockMarketStatus": getMarketStatus()
                     }
-
-                    
-    
-                    //console.log(JSON.stringify(stockData));
-
+                    console.log(JSON.stringify(stockData));
                     Pebble.sendAppMessage(stockData);
-    
                 }
             }
         }
         req.send();
-    } else if ( n == 0 ) {
-        if (settings.PriceHistoryHorizon == 'minutely'){
-            req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&outputsize=full&interval=1min&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
-            req.onload = function(e) {
-                if (req.readyState == 4) {
-                  // 200 - HTTP OK
-                    if(req.status == 200) {
-                        var response = JSON.parse(req.responseText);
-                        //console.log(JSON.stringify(response));
-                        //console.log(_.values(response["Time Series (1min)"]).length);
-                        var price = Number(_.values(response["Time Series (1min)"])[0]["4. close"]);
-                        var changePercent = "1.00%";
-                        var volume = _.values(response["Time Series (1min)"])[0]["5. volume"];
-                        var stockData = {
-                            "StockIndex": i,
-                            "StockSymbol": symbol,
-                            "StockPrice": formatStockPrice(price),
-                            "StockPriceChange": formatChangePercent(changePercent),
-                            "StockVolume": filterNumber(volume)
-                        }
-                        console.log(JSON.stringify(stockData));
-                        Pebble.sendAppMessage(stockData);
+    } else if (settings.PriceHistoryHorizon == '1month'){
+        console.log(interval)
+        req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&outputsize=full&interval=30min&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
+        req.onload = function(e) {
+            if (req.readyState == 4) {
+              // 200 - HTTP OK
+                if(req.status == 200) {
+                    var response = JSON.parse(req.responseText);
+                    //console.log(JSON.stringify(response));
+                    //console.log(_.values(response["Time Series (30min)"]).length);
+                    var price = Number(_.values(response["Time Series (30min)"])[0]["4. close"]);
+                    var changePercent = "1.00%";
+                    var volume = _.values(response["Time Series (30min)"])[0]["5. volume"];
+                    var stockData = {
+                        "StockIndex": i,
+                        "StockSymbol": symbol,
+                        "StockPrice": formatStockPrice(price),
+                        "StockPriceChange": formatChangePercent(changePercent),
+                        "StockVolume": filterNumber(volume),
+                        "StockMarketStatus": getMarketStatus()
                     }
+                    console.log(JSON.stringify(stockData));
+                    Pebble.sendAppMessage(stockData);
                 }
             }
-            req.send();
-        } else if (settings.PriceHistoryHorizon == 'daily'){
-            req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&outputsize=full&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
-            req.onload = function(e) {
-                if (req.readyState == 4) {
-                  // 200 - HTTP OK
-                    if(req.status == 200) {
-                        var response = JSON.parse(req.responseText);
-                        //console.log(JSON.stringify(response));
-                    }
-                }
-            }
-            req.send();
-        } else if (settings.PriceHistoryHorizon == 'weekly'){
-            req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY_ADJUSTED&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
-            req.onload = function(e) {
-                if (req.readyState == 4) {
-                  // 200 - HTTP OK
-                    if(req.status == 200) {
-                        var response = JSON.parse(req.responseText);
-                        //console.log(JSON.stringify(response));
-                    }
-                }
-            }
-            req.send();
         }
+        req.send();
+    } else if (settings.PriceHistoryHorizon == '1year'){
+        req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&outputsize=full&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
+        req.onload = function(e) {
+            if (req.readyState == 4) {
+              // 200 - HTTP OK
+                if(req.status == 200) {
+                    var response = JSON.parse(req.responseText);
+                    //console.log(JSON.stringify(response));
+                    var history = _.values(response["Time Series (Daily)"]);
+                    //console.log(history.length);
 
-    } else {
-        Pebble.sendAppMessage({StockMarketStatus:"configuration error"})
+                    var priceHistory = [];
+                    var volumeHistory = [];
+
+                    if (history.length < 260){
+                        Pebble.sendAppMessage({
+                            StockMarketStatus: "error in price history"
+                        })
+                    }
+                    for (var i = 0; i <= 260; i++){
+                        priceHistory.push(Number(history[i]["5. adjusted close"]).toFixed(2));
+                        volumeHistory.push(history[i]["6. volume"]);
+                    }
+
+                    priceHistory.reverse();
+                    volumeHistory.reverse();
+
+                    // **********
+                    // **** VOL
+                    // **********
+
+                    var volumeMax = volumeHistory.reduce(function(a, b) {
+                        return Math.max(a, b);
+                    });
+                    var volumeMin = volumeHistory.reduce(function(a, b) {
+                        return Math.min(a, b);
+                    });
+                    var volumeRange = volumeMax - volumeMin;
+
+                    volHis = [];
+                    for (var i = 0; i < volumeHistory.length; i++){
+                        volHis.push({
+                            x: i,
+                            volume: volumeHistory[i] = Math.round( (volumeHistory[i] - volumeMin) / volumeRange * 20 )
+                        })
+                    }
+                    volHis = largestTriangleThreeBuckets(volHis, 140, "x", "volume" );
+                    volumeHistory = [];
+                    for (var i = 0; i < volHis.length; i++) {
+                        volumeHistory.push(volHis[i].volume);
+                    }
+                    console.log(volumeHistory);
+
+                    // **********
+                    // **** PRICE
+                    // **********
+
+                    var priceMax = priceHistory.reduce(function(a, b) {
+                        return Math.max(a, b);
+                    });
+                    var priceMin = priceHistory.reduce(function(a, b) {
+                        return Math.min(a, b);
+                    });
+                    var priceRange = priceMax - priceMin;
+
+                    priceHis = [];
+                    for (var i = 0; i < priceHistory.length; i++){
+                        priceHis.push({
+                            x: i,
+                            price: priceHistory[i] = Math.round( (priceHistory[i] - priceMin) / priceRange * 100 )
+                        })
+                    }
+                    priceHis = largestTriangleThreeBuckets(priceHis, 140, "x", "price" );
+                    priceHistory = [];
+                    for (var i = 0; i < priceHis.length; i++) {
+                        priceHistory.push(110-priceHis[i].price);
+                    }
+                    console.log(priceHistory);
+
+                    // **********
+                    // **** SEND
+                    // **********
+
+                    Pebble.sendAppMessage({
+                        StockVolumeHistory:volumeHistory,
+                        StockPriceHistory:priceHistory
+                    })
+
+                    
+
+                }
+            }
+        }
+        req.send();
+    } else if (settings.PriceHistoryHorizon == '5years'){
+        req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY_ADJUSTED&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
+        req.onload = function(e) {
+            if (req.readyState == 4) {
+              // 200 - HTTP OK
+                if(req.status == 200) {
+                    var response = JSON.parse(req.responseText);
+                    //console.log(JSON.stringify(response));
+                }
+            }
+        }
+        req.send();
     }
-
 }
 
-function requestMultiStockData(){
-    for (i = 1; i < 6; i++){
-        if (settings["StockSymbol"+i] && settings["StockSymbol"+i] != "") {
-            queryAPI(i-1, settings["StockSymbol"+i]);
-        }
-    }
-}
+
+
+// function requestMultiStockData(){
+//     for (i = 1; i < 6; i++){
+//         if (settings["StockSymbol"+i] && settings["StockSymbol"+i] != "") {
+//             queryAPI(i-1, settings["StockSymbol"+i]);
+//         }
+//     }
+// }
 
 
 //check the market's status for any given day and time
@@ -208,19 +323,19 @@ function getMarketStatus(){
 function formatChangePercent(changePercent){
     changePercent = Number(changePercent.slice(0, changePercent.length-1));
     changePercent = changePercent.toFixed(2);
-    return changePercent;
+    return "( " + changePercent + "% )";
 }
 
 //helper function to format the stock price
 function formatStockPrice(price){
-    if ( price < 100){
+    if (price < 100){
         price = price.toFixed(2);
     } else if (price >= 100 && price < 1000) {
         price = price.toFixed(1);
     } else if (price >= 1000){
         price = Math.round(price);
     }
-    return price;
+    return price+"";
 }
 
 //function to reduce the size of the stock's volume
@@ -428,8 +543,84 @@ if (!Array.from) {
   }
 
 
+//incredible function that samples timeseries charts; developed by https://skemman.is/handle/1946/15343
+  function largestTriangleThreeBuckets(data, threshold, xAccessor, yAccessor) {
+
+    var floor = Math.floor,
+      abs = Math.abs;
+
+    var daraLength = data.length;
+    if (threshold >= daraLength || threshold === 0) {
+      return data; // Nothing to do
+    }
+
+    var sampled = [],
+      sampledIndex = 0;
+
+    // Bucket size. Leave room for start and end data points
+    var every = (daraLength - 2) / (threshold - 2);
+
+    var a = 0,  // Initially a is the first point in the triangle
+      maxAreaPoint,
+      maxArea,
+      area,
+      nextA;
+
+    sampled[ sampledIndex++ ] = data[ a ]; // Always add the first point
+
+    for (var i = 0; i < threshold - 2; i++) {
+
+      // Calculate point average for next bucket (containing c)
+      var avgX = 0,
+        avgY = 0,
+        avgRangeStart  = floor( ( i + 1 ) * every ) + 1,
+        avgRangeEnd    = floor( ( i + 2 ) * every ) + 1;
+      avgRangeEnd = avgRangeEnd < daraLength ? avgRangeEnd : daraLength;
+
+      var avgRangeLength = avgRangeEnd - avgRangeStart;
+
+      for ( ; avgRangeStart<avgRangeEnd; avgRangeStart++ ) {
+        avgX += data[ avgRangeStart ][ xAccessor ] * 1; // * 1 enforces Number (value may be Date)
+        avgY += data[ avgRangeStart ][ yAccessor ] * 1;
+      }
+      avgX /= avgRangeLength;
+      avgY /= avgRangeLength;
+
+      // Get the range for this bucket
+      var rangeOffs = floor( (i + 0) * every ) + 1,
+        rangeTo   = floor( (i + 1) * every ) + 1;
+
+      // Point a
+      var pointAX = data[ a ][ xAccessor ] * 1, // enforce Number (value may be Date)
+        pointAY = data[ a ][ yAccessor ] * 1;
+
+      maxArea = area = -1;
+
+      for ( ; rangeOffs < rangeTo; rangeOffs++ ) {
+        // Calculate triangle area over three buckets
+        area = abs( ( pointAX - avgX ) * ( data[ rangeOffs ][ yAccessor ] - pointAY ) -
+              ( pointAX - data[ rangeOffs ][ xAccessor ] ) * ( avgY - pointAY )
+              ) * 0.5;
+        if ( area > maxArea ) {
+          maxArea = area;
+          maxAreaPoint = data[ rangeOffs ];
+          nextA = rangeOffs; // Next a is this b
+        }
+      }
+
+      sampled[ sampledIndex++ ] = maxAreaPoint; // Pick this point from the bucket
+      a = nextA; // This a is the next a (chosen b)
+    }
+
+    sampled[ sampledIndex++ ] = data[ daraLength - 1 ]; // Always add last
+
+    return sampled;
+  }
+
+
 
 //storage for config.json
+
 // {
 //     "type": "select",
 //     "messageKey": "QueryInterval",
@@ -463,3 +654,47 @@ if (!Array.from) {
 //       }
 //     ]
 // }
+
+
+
+// {
+//     "type":"input",
+//     "messageKey":"StockSymbol2",
+//     "label":"Stock Symbol #2",
+//     "defaultValue":""
+// },
+// {
+//     "type":"input",
+//     "messageKey":"StockSymbol3",
+//     "label":"Stock Symbol #3",
+//     "defaultValue":""
+// },
+// {
+//     "type":"input",
+//     "messageKey":"StockSymbol4",
+//     "label":"Stock Symbol #4",
+//     "defaultValue":""
+// },
+// {
+//     "type":"input",
+//     "messageKey":"StockSymbol5",
+//     "label":"Stock Symbol #5",
+//     "defaultValue":""
+// },
+// {
+//     "type": "select",
+//     "messageKey": "DisplayMode",
+//     "defaultValue": "1",
+//     "label": "Display Mode",
+//     "description": "Selecting single stock mode will show just one stock ticker on the Pebble (Stock Symbol #1) with a rich layout. Selecting multi mode will show you all five stock tickers in a minimalist list.",
+//     "options": [
+//         { 
+//             "label": "Single", 
+//             "value": 0
+//         },
+//         { 
+//             "label": "Multi",
+//             "value": 1
+//         }
+//     ]
+// },
