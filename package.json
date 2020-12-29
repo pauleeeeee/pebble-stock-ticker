@@ -40,7 +40,8 @@
       "StockPriceHistory": 105,
       "StockVolumeHistory": 106,
       "DisplayMode": 200,
-      "StockMarketStatus": 201
+      "StockMarketStatus": 201,
+      "DitherStyle": 202
     },
     "resources": {
       "media": [

@@ -17,3 +17,4 @@ typedef struct {
 #define StockVolumeHistory 106
 #define DisplayMode 200
 #define StockMarketStatus 201
+#define DitherStyle 202

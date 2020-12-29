@@ -11,10 +11,10 @@ static Window *s_window;
 static BluetoothLayer *s_bluetooth_layer;
 static BatteryBarLayer *s_battery_layer;
 static TextLayer *s_time_layer, *s_full_date_layer, *s_market_status_text_layer;
-static Stock s_stocks[5];
+static Stock s_stock;
 static GFont s_symbol_font, s_x_large_font, s_big_font, s_medium_font, s_small_font, s_tiny_font;
-int stock_index = 0;
-int display_mode = 0; //0 is single; 1 is multi
+int display_mode = 0;
+int dither_style = 0;
 char market_status[128];
 static uint8_t s_price_history[140];
 static uint8_t s_volume_history[140];
@@ -68,18 +68,31 @@ static void s_single_view_layer_update_proc(Layer *layer, GContext *ctx){
   if ((s_price_history[0] + s_price_history[1] + s_price_history[2] )!= 0) {
 
     //draw dithering
-    //draw_gradient_rect(ctx, box, GColorBlack, GColorWhite, BOTTOM_TO_TOP);
-    draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y, box.size.w, 10), GColorBlack, GColorWhite, DITHER_90_PERCENT);
-    draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+10, box.size.w, 20), GColorBlack, GColorWhite, DITHER_70_PERCENT);
-    draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+30, box.size.w, 20), GColorBlack, GColorWhite, DITHER_40_PERCENT);
-    draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+50, box.size.w, 20), GColorBlack, GColorWhite, DITHER_30_PERCENT);
-    draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+70, box.size.w, 20), GColorBlack, GColorWhite, DITHER_20_PERCENT);
-    draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+90, box.size.w, 10), GColorBlack, GColorWhite, DITHER_10_PERCENT);
+
+    if (dither_style == 0) {
+      draw_gradient_rect(ctx, box, GColorBlack, GColorWhite, BOTTOM_TO_TOP);
+      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y, box.size.w, 10), GColorBlack, GColorWhite, DITHER_90_PERCENT);
+      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+10, box.size.w, 20), GColorBlack, GColorWhite, DITHER_70_PERCENT);
+      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+30, box.size.w, 20), GColorBlack, GColorWhite, DITHER_40_PERCENT);
+      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+50, box.size.w, 20), GColorBlack, GColorWhite, DITHER_30_PERCENT);
+      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+70, box.size.w, 20), GColorBlack, GColorWhite, DITHER_20_PERCENT);
+      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+90, box.size.w, 10), GColorBlack, GColorWhite, DITHER_10_PERCENT);
+    } else if (dither_style == 1) {
+      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y, box.size.w+2, 20), GColorBlack, GColorWhite, DITHER_10_PERCENT);
+      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+20, box.size.w+2, 20), GColorBlack, GColorWhite, DITHER_10_PERCENT);
+      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+40, box.size.w+2, 20), GColorBlack, GColorWhite, DITHER_25_PERCENT);
+      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+60, box.size.w, 20), GColorBlack, GColorWhite, DITHER_40_PERCENT);
+      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+80, box.size.w, 20), GColorBlack, GColorWhite, DITHER_70_PERCENT);
+      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+100, box.size.w, 15), GColorBlack, GColorWhite, DITHER_90_PERCENT);
+      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+115, box.size.w, 15), GColorBlack, GColorWhite, DITHER_100_PERCENT);
+    }
 
     //mask dithering with black line draws
-    graphics_context_set_stroke_color(ctx, GColorBlack);
-    for (int i = 0; i <= 139; i++){
-      graphics_draw_line(ctx, GPoint(box.origin.x + i, box.origin.y), GPoint(box.origin.x + i, s_price_history[i]-10));
+    if (dither_style != 2) {
+      graphics_context_set_stroke_color(ctx, GColorBlack);
+      for (int i = 0; i <= 139; i++){
+        graphics_draw_line(ctx, GPoint(box.origin.x + i, box.origin.y), GPoint(box.origin.x + i, s_price_history[i]-10));
+      }
     }
 
   }
@@ -88,35 +101,47 @@ static void s_single_view_layer_update_proc(Layer *layer, GContext *ctx){
   int offset = 0;
   graphics_context_set_stroke_color(ctx, GColorWhite);
   graphics_draw_line(ctx, GPoint(box.origin.x, box.size.h - offset), GPoint(box.size.w, box.size.h - offset));
-  for (int i = 0; i < 139; i++){
-    graphics_draw_line(ctx, GPoint(box.origin.x + i, box.size.h - offset), GPoint(box.origin.x + i, box.size.h - offset - s_volume_history[i]));
-    graphics_draw_line(ctx, GPoint(box.origin.x + i, s_price_history[i]-10), GPoint(box.origin.x + i + 1, s_price_history[i + 1]-10));
+
+  if (dither_style == 0){
+    for (int i = 0; i < 139; i++){
+      graphics_context_set_stroke_color(ctx, GColorBlack);
+      graphics_draw_line(ctx, GPoint(box.origin.x + i, box.size.h - offset), GPoint(box.origin.x + i, box.size.h - offset - s_volume_history[i]));
+      graphics_context_set_stroke_color(ctx, GColorWhite);
+      graphics_draw_line(ctx, GPoint(box.origin.x + i, s_price_history[i]-10), GPoint(box.origin.x + i + 1, s_price_history[i + 1]-10));
+    }
+  } else {
+      graphics_context_set_stroke_color(ctx, GColorWhite);
+      for (int i = 0; i < 139; i++){
+      graphics_draw_line(ctx, GPoint(box.origin.x + i, box.size.h - offset), GPoint(box.origin.x + i, box.size.h - offset - s_volume_history[i]));
+      graphics_draw_line(ctx, GPoint(box.origin.x + i, s_price_history[i]-10), GPoint(box.origin.x + i + 1, s_price_history[i + 1]-10));
+    }
+    graphics_draw_line(ctx, GPoint(138, box.size.h - offset), GPoint(138, box.size.h - offset - s_volume_history[139]));
   }
-  graphics_draw_line(ctx, GPoint(138, box.size.h - offset), GPoint(138, box.size.h - offset - s_volume_history[139]));
+
 
   //draw symbol text
   graphics_context_set_text_color(ctx, GColorWhite);
-  graphics_draw_text(ctx, s_stocks[0].symbol, s_symbol_font, GRect(box.origin.x, box.origin.y+10, box.size.w, box.size.h-10), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stock.symbol, s_symbol_font, GRect(box.origin.x, box.origin.y+10, box.size.w, box.size.h-10), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
   
   //draw black bubble behind price
   graphics_context_set_text_color(ctx, GColorBlack);
-  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x+2, box.origin.y+34, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x-2, box.origin.y+34, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x, box.origin.y+32, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x+2, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x-2, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x-2, box.origin.y+32, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x+2, box.origin.y+32, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x+2, box.origin.y+34, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x-2, box.origin.y+34, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x, box.origin.y+32, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x+2, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x-2, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x-2, box.origin.y+32, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x+2, box.origin.y+32, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
 
   //black oval behind small price change text
   graphics_context_set_fill_color(ctx, GColorBlack);
-  graphics_fill_rect(ctx, GRect((box.size.w/2)-25,box.origin.y+64, 50, 15), 4, GCornersAll);
+  graphics_fill_rect(ctx, GRect((box.size.w/2)-30,box.origin.y+64, 60, 15), 4, GCornersAll);
 
   //draw price and price change
   graphics_context_set_text_color(ctx, GColorWhite);
-  graphics_draw_text(ctx, s_stocks[0].price, s_medium_font, GRect(box.origin.x, box.origin.y+34, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stocks[0].price_change, s_small_font, GRect(box.origin.x, box.origin.y+62, box.size.w, box.size.h-62), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x, box.origin.y+34, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stock.price_change, s_small_font, GRect(box.origin.x, box.origin.y+62, box.size.w, box.size.h-62), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
 
 }
 
@@ -149,37 +174,41 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
   Tuple *display_mode_tuple = dict_find (iter, DisplayMode);
   if (display_mode_tuple) {
     display_mode = display_mode_tuple->value->int32;
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "got tuple %d", DisplayMode);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "value is %d", display_mode);
+  }
+
+  Tuple *dither_style_tuple = dict_find (iter, DitherStyle);
+  if (dither_style_tuple) {
+    dither_style = dither_style_tuple->value->int32;
+    persist_write_int(DitherStyle, dither_style);
   }
 
 
-  Tuple *stock_index_tuple = dict_find (iter, StockIndex);
-  if (stock_index_tuple) {
-    stock_index = stock_index_tuple->value->int32;
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "got tuple %d", StockIndex);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "value is %d", stock_index);
-  }
+  // Tuple *stock_index_tuple = dict_find (iter, StockIndex);
+  // if (stock_index_tuple) {
+  //   stock_index = stock_index_tuple->value->int32;
+  //   APP_LOG(APP_LOG_LEVEL_DEBUG, "got tuple %d", StockIndex);
+  //   APP_LOG(APP_LOG_LEVEL_DEBUG, "value is %d", stock_index);
+  // }
 
   Tuple *stock_symbol_tuple = dict_find (iter, StockSymbol);
   if (stock_symbol_tuple){
-    strncpy(s_stocks[stock_index].symbol, stock_symbol_tuple->value->cstring, sizeof(s_stocks[stock_index].symbol));
-    //persist_write_string(StockSymbol, s_stocks[stock_index].symbol);
+    strncpy(s_stock.symbol, stock_symbol_tuple->value->cstring, sizeof(s_stock.symbol));
+    //persist_write_string(StockSymbol, s_stock.symbol);
   }
 
   Tuple *stock_price_tuple = dict_find (iter, StockPrice);
   if (stock_price_tuple){
-    strncpy(s_stocks[stock_index].price, stock_price_tuple->value->cstring, sizeof(s_stocks[stock_index].price));
+    strncpy(s_stock.price, stock_price_tuple->value->cstring, sizeof(s_stock.price));
   }
 
   Tuple *stock_price_change_tuple = dict_find (iter, StockPriceChange);
   if (stock_price_change_tuple){
-    strncpy(s_stocks[stock_index].price_change, stock_price_change_tuple->value->cstring, sizeof(s_stocks[stock_index].price_change));
+    strncpy(s_stock.price_change, stock_price_change_tuple->value->cstring, sizeof(s_stock.price_change));
   }
 
   Tuple *stock_volume_tuple = dict_find (iter, StockVolume);
   if (stock_volume_tuple){
-    strncpy(s_stocks[stock_index].volume, stock_volume_tuple->value->cstring, sizeof(s_stocks[stock_index].volume));
+    strncpy(s_stock.volume, stock_volume_tuple->value->cstring, sizeof(s_stock.volume));
   }
 
   Tuple *stock_price_history_tuple = dict_find (iter, StockPriceHistory);
@@ -273,9 +302,23 @@ static void prv_window_load(Window *window) {
   text_layer_set_text_alignment(s_market_status_text_layer, GTextAlignmentLeft);
   layer_add_child(window_layer, text_layer_get_layer(s_market_status_text_layer));
   text_layer_set_text(s_market_status_text_layer, "loading...");
+
+  //read persisted data
   if(persist_exists(StockMarketStatus)){
     persist_read_string(StockMarketStatus, market_status, sizeof(market_status));
   } 
+
+  if(persist_exists(DitherStyle)) {
+    dither_style = persist_read_int(DitherStyle);
+  }
+
+  if(persist_exists(StockPriceHistory)){
+    persist_read_data(StockPriceHistory, s_price_history, sizeof(s_price_history));
+  }
+
+  if(persist_exists(StockVolumeHistory)){
+    persist_read_data(StockVolumeHistory, s_volume_history, sizeof(s_volume_history));
+  }
 
   //draw_stock_data();
   draw_stock_data_single_view();
@@ -287,6 +330,7 @@ static void prv_window_unload(Window *window) {
   bluetooth_layer_destroy(s_bluetooth_layer);
   text_layer_destroy(s_time_layer);
   text_layer_destroy(s_full_date_layer);
+  layer_destroy(s_single_view_layer);
 }
 
 static void prv_init(void) {
@@ -300,7 +344,7 @@ static void prv_init(void) {
   app_message_register_inbox_received(in_received_handler);
   app_message_register_inbox_dropped(in_dropped_handler);
 
-  app_message_open(1024, 128);
+  app_message_open(512, 512);
 
   const bool animated = true;
   window_stack_push(s_window, animated);

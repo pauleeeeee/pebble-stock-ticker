@@ -52,6 +52,27 @@
                     "value": "5years"
                   }
                 ]
+            },
+            {
+                "type": "select",
+                "messageKey": "DitherStyle",
+                "defaultValue": 0,
+                "label": "Dither Style",
+                "description": "This defines the fill appearance of the graph.",
+                "options": [
+                  { 
+                    "label": "classic", 
+                    "value": 0
+                  },
+                  { 
+                    "label": "inverted",
+                    "value": 1
+                  },
+                  {
+                    "label": "none",
+                    "value": 2
+                  }
+                ]
             }
 
         ]

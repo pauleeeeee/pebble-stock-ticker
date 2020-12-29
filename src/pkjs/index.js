@@ -13,14 +13,15 @@ var _ = require('lodash');
 //declare global settings variable
 var settings = {};
 // var settings = {
-//     APIKey: "",
+//     APIKey: "IGX5JBZCJJ3ZJVP3",
 //     DisplayMode: 0,
-//     StockSymbol1: "AMPE",
+//     StockSymbol1: "GOOGL",
 //     StockSymbol2: "MDB",
 //     StockSymbol3: "GOOGL",
 //     StockSymbol4: "CLF",
 //     StockSymbol5: "VOO",
-//     PriceHistoryHorizon: "1year"
+//     PriceHistoryHorizon: "1year",
+//     DitherStyle: 0
 // };
 
 
@@ -77,7 +78,8 @@ Pebble.addEventListener("webviewclosed", function(e){
     settings = JSON.parse(localStorage.getItem('clay-settings'));
     console.log(JSON.stringify(settings));
     Pebble.sendAppMessage({
-        StockMarketStatus: "loading..."
+        StockMarketStatus: "loading...",
+        DitherStyle: settings.DitherStyle
     });
 
     getSimpleQuote(settings.StockSymbol1);
@@ -105,7 +107,6 @@ function getSimpleQuote(symbol){
                 var volume = filterNumber(response["Global Quote"]["06. volume"]);
 
                 var stockData = {
-                    "StockIndex": 0,
                     "StockSymbol": symbol,
                     "StockPrice": price,
                     "StockPriceChange": changePercent,
