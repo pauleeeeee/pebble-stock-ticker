@@ -21,13 +21,14 @@
     "defaultValue": "Configuration"
   },
   {
-    "type:": "section",
+    "type": "section",
     "items": [
       {
         "type": "radiogroup",
         "messageKey": "AssetType",
-        "label": "Asset Type",
-        "description": "Declare which asset type you want to view; cryptocurrency or stock. You can configure both separately below.",
+        "label": "Mode",
+        "description": "Choose which mode you want to use; cryptocurrency or stock.",
+        "defaultValue": "crypto",
         "options": [
           {
             "label": "Cryptocurrency",
@@ -40,7 +41,7 @@
         ]
       },
       {
-        "type": "select",
+        "type": "radiogroup",
         "messageKey": "DitherStyle",
         "defaultValue": 0,
         "label": "Dither Style",
@@ -64,7 +65,127 @@
   },
   {
     "type": "heading",
-    "defaultValue": "Configure Stock"
+    "defaultValue": "Cryptocurrency Setup"
+  },
+  {
+    "type": "text",
+    "defaultValue": "Price and volume for the selected crypto/fiat pair will be fetched from Binance through the https://cryptowat.ch/ API."
+  },
+  {
+    "type": "section",
+    "items": [
+      {
+        "type": "select",
+        "messageKey": "CryptoSymbol",
+        "defaultValue": "btcusd-perpetual-future-inverse",
+        "label": "Cryptocurrency / Fiat Pair",
+        "description": "Choose the cryptocurrency and the fiat currency pair. The most common is 'btcusd' or 'one Bitcoin in United States Dollars'.",
+        "options": [
+          {
+            "label": "btcusd",
+            "value": "btcusd-perpetual-future-inverse"
+          },
+          {
+            "label": "ethusd",
+            "value": "ethusd-perpetual-future-inverse"
+          },
+          {
+            "label": "bnbusd",
+            "value": "bnbusd-perpetual-future-inverse"
+          },
+          {
+            "label": "xrpusd",
+            "value": "xrpusd-perpetual-future-inverse"
+          },
+          {
+            "label": "ltcusd",
+            "value": "ltcusd-perpetual-future-inverse"
+          },
+          {
+            "label": "linkusd",
+            "value": "linkusd-perpetual-future-inverse"
+          },
+          {
+            "label": "dotusd",
+            "value": "dotusd-perpetual-future-inverse"
+          },
+          {
+            "label": "btceur",
+            "value": "btceur"
+          },
+          {
+            "label": "etheur",
+            "value": "etheur"
+          },
+          {
+            "label": "bnbeur",
+            "value": "bnbeur"
+          },
+          {
+            "label": "xrpeur",
+            "value": "xrpeur"
+          },
+          {
+            "label": "ltceur",
+            "value": "ltceur"
+          },
+          {
+            "label": "linkeur",
+            "value": "linkeur"
+          },
+          {
+            "label": "doteur",
+            "value": "doteur"
+          }
+        ]
+      },
+      {
+        "type": "select",
+        "messageKey": "CryptoPriceHistoryHorizon",
+        "defaultValue": "1y",
+        "label": "Price History Horizon",
+        "description": "How far back do you want to see the price history? The 'resolution' of the price history (ie: 1m, 1h, 1d, etc) is automatically selected and then downsampled to suit the available pixels on the Pebble.",
+        "options": [
+          {
+            "label": "2.5 hours",
+            "value": "2.5h"
+          },
+          {
+            "label": "12 hours",
+            "value": "12h"
+          },
+          {
+            "label": "1 day",
+            "value": "1d"
+          },
+          {
+            "label": "1 week (7 days)",
+            "value": "1w"
+          },
+          {
+            "label": "1 month (30 days)",
+            "value": "1m"
+          },
+          {
+            "label": "1 year",
+            "value": "1y"
+          },
+          {
+            "label": "5 years",
+            "value": "5y"
+          }
+        ]
+      }
+
+    ]
+  },
+  {
+    "type": "heading",
+    "defaultValue": "Stock Setup"
+  },
+  {
+    "type": "text",
+    "defaultValue": "Unfortunatley, real-time data is not currently available for stocks. The data is always end of day or day old. The app is ready to accept real-time data. If you know of an API that can provide free, convenient, real-time data for a single stock symbol... please contact me."
   },
   {
     "type": "section",
@@ -78,17 +199,17 @@
       },
       {
         "type": "input",
-        "messageKey": "StockSymbol1",
+        "messageKey": "StockSymbol",
         "label": "Stock Symbol",
         "defaultValue": "VOO",
         "description": "Enter the stock symbol of your choice. Make sure the symbol is spelled correctly and does contain any extra characters like trailing white spaces. You can add pretty much any publicly traded equity from the major exchanges."
       },
       {
         "type": "select",
-        "messageKey": "PriceHistoryHorizon",
+        "messageKey": "StockPriceHistoryHorizon",
         "defaultValue": "1year",
         "label": "Price History Horizon",
-        "description": "How far back do you want to see the price history? Price histories are always adjusted for splits.",
+        "description": "How far back do you want to see the price history? Price histories are always adjusted for splits. Note: the percent change reflects the change since the beginning of the price history which can be influenced by the number of market holidays present in recent history.",
         "options": [
           {
             "label": "5 days",

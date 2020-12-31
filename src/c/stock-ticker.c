@@ -87,11 +87,6 @@ static void s_single_view_layer_update_proc(Layer *layer, GContext *ctx){
   }
 
   
-  //black oval behind small price change text
-  graphics_context_set_fill_color(ctx, GColorBlack);
-  //draw black bubble behind price
-  graphics_fill_rect(ctx, GRect((box.size.w/2)-30,box.origin.y+64, 60, 15), 4, GCornersAll);
-
 
   //draw volume and price history
   int offset = 1;
@@ -115,7 +110,10 @@ static void s_single_view_layer_update_proc(Layer *layer, GContext *ctx){
     graphics_draw_line(ctx, GPoint(138, box.size.h - offset), GPoint(138, box.size.h - offset - s_volume_history[139]));
   }
 
-  //black mask / drop shadow for price
+  //black oval behind small price change text
+  graphics_context_set_fill_color(ctx, GColorBlack);
+  //draw black bubble behind price change
+  graphics_fill_rect(ctx, GRect((box.size.w/2)-30,box.origin.y+64, 60, 15), 4, GCornersAll);
   graphics_context_set_text_color(ctx, GColorBlack);
   //graphics_fill_rect(ctx, GRect((box.size.w/2)-30,box.origin.y+50, 60, 20), 4, GCornersAll);
   graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x+2, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, s_text_attributes);

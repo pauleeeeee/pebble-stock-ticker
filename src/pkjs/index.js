@@ -12,14 +12,16 @@ var _ = require('lodash');
 
 //declare global settings variable
 var settings = {};
-var settings = {
-    APIKey: "IGX5JBZCJJ3ZJVP3",
-    DisplayMode: 0,
-    StockSymbol1: "AAL",
-    PriceHistoryHorizon: "1month",
-    DitherStyle: 2,
-    AssetType: "stock"
-};
+// var settings = {
+//     APIKey: "",
+//     DisplayMode: 0,
+//     StockSymbol: "AAL",
+//     StockPriceHistoryHorizon: "1month",
+//     DitherStyle: 2,
+//     AssetType: "crypto",
+//     CryptoSymbol: "btcusd-perpetual-future-inverse",
+//     CryptoPriceHistoryHorizon: "1y"
+// };
 
 
 var lastCall = 0;
@@ -29,7 +31,7 @@ Pebble.addEventListener("ready",
     function(e) {
 
         //on load, get settings from local storage if they have already been set by clay. If they have not been set, define settings as a blank object.
-        //settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
+        settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
         console.log(JSON.stringify(settings));
 
         //lastCall = localStorage.getItem('lastCall') || 0;
@@ -42,8 +44,12 @@ Pebble.addEventListener("ready",
             });
         } else {
             //queryLoop();
-            //getSimpleQuote(settings.StockSymbol1);
-            getPriceHistory(settings.StockSymbol1);
+            //getSimpleQuote(settings.StockSymbol);
+            if (settings.AssetType == "stock") {
+              getStockPriceHistory(settings.StockSymbol);
+            } else if (settings.AssetType == "crypto") {
+              getCryptoPriceHistory(settings.CryptoSymbol)
+            }
         }
 
         
@@ -72,59 +78,189 @@ Pebble.addEventListener("webviewclosed", function(e){
     console.log('from web view closed:');
     //// settings = clay.getSettings(e.response, true);
     //// localStorage.setItem("settings", JSON.stringify(settings));
-    //settings = JSON.parse(localStorage.getItem('clay-settings'));
+    settings = JSON.parse(localStorage.getItem('clay-settings'));
     console.log(JSON.stringify(settings));
     Pebble.sendAppMessage({
         StockMarketStatus: "loading...",
-        DitherStyle: settings.DitherStyle
+        DitherStyle: Number(settings.DitherStyle)
     });
 
-    //getSimpleQuote(settings.StockSymbol1);
-    getPriceHistory(settings.StockSymbol1);
+    if (settings.AssetType == "stock") {
+      getStockPriceHistory(settings.StockSymbol);
+    } else if (settings.AssetType == "crypto") {
+      getCryptoPriceHistory(settings.CryptoSymbol)
+    }
+
 });
 
-function getSimpleQuote(symbol){
-    var req = new XMLHttpRequest();
-    req.open('GET', 'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
-    req.onload = function(e) {
-        if (req.readyState == 4) {
-          // 200 - HTTP OK
-            if(req.status == 200) {
-              var response = JSON.parse(req.responseText);
-              console.log(JSON.stringify(response));
+function getCryptoPriceHistory(symbol){
+  var url = "https://api.cryptowat.ch/markets/binance/" + symbol + "/ohlc";
+  if (symbol == "btcusd-perpetual-future-inverse") {
+    url = "https://api.cryptowat.ch/markets/bitmex/btcusd-perpetual-future-inverse/ohlc";
+  }
 
-              //make some more reasonable convenience variables
-              var price = Number(response["Global Quote"]["05. price"]);
-              price = formatStockPrice((price));
+  var time = 0;
+  var period = 0;
 
-              var changePercent = String(response["Global Quote"]["10. change percent"]);
-              changePercent = formatChangePercent(changePercent);
-              // changePercent = Number(changePercent.slice(0, changePercent.length-1));
-              // changePercent = changePercent.toFixed(2);
-              var volume = filterNumber(response["Global Quote"]["06. volume"]);
+  switch(settings.CryptoPriceHistoryHorizon) {
+    case "2.5h": time = moment().subtract(2.5, "hours").unix(); period = 60; break;
+    case "12h": time = moment().subtract(12, "hours").unix(); period = 300; break;
+    case "1d": time = moment().subtract(1, "days").unix(); period = 300; break;
+    case "1w": time = moment().subtract(7, "days").unix(); period = 3600; break;
+    case "1m": time = moment().subtract(1, "months").unix(); period = 21600; break;
+    case "1y": time = moment().subtract(1, "years").unix(); period = 86400; break;
+    case "5y": time = moment().subtract(5, "years").unix(); period = 604800; break;
+  }
 
-              var stockData = {
-                  StockSymbol: symbol,
-                  StockPrice: price,
-                  StockPriceChange: changePercent,
-                  StockVolume: volume,
-                  StockMarketStatus: getMarketStatus()
-              }
+  url += "?after=" + time + "&periods=" + period;
 
-              console.log(JSON.stringify(stockData));
+  var req = new XMLHttpRequest();
 
-              Pebble.sendAppMessage(stockData);
+  req.open('GET', url, true);
 
-            }
+  req.onload = function(e) {
+    if (req.readyState == 4) {
+      // 200 - HTTP OK
+      if(req.status == 200) {
+        var response = JSON.parse(req.responseText);
+        console.log(JSON.stringify(response));
+
+        var history = response.result[period+""];
+        console.log(history.length);
+
+        var priceHistory = [];
+        var volumeHistory = [];
+
+        for (var i = 0; i < history.length; i++){
+            priceHistory.push(history[i][4]).toFixed(1);
+            volumeHistory.push(Math.round(history[i][5]));
         }
-    }
-    req.send();
 
+        // priceHistory.reverse();
+        // volumeHistory.reverse();
+
+        var price = formatStockPrice(priceHistory[priceHistory.length-1]);
+        var changePercent = "( " + Number(((priceHistory[priceHistory.length-1] - priceHistory[0]) / priceHistory[0])*100).toFixed(2) + "% )";
+
+        // **********
+        // **** VOL
+        // **********
+
+        var volumeMax = volumeHistory.reduce(function(a, b) {
+            return Math.max(a, b);
+        });
+        var volumeMin = volumeHistory.reduce(function(a, b) {
+            return Math.min(a, b);
+        });
+        var volumeRange = volumeMax - volumeMin;
+
+        volHis = [];
+        for (var i = 0; i < volumeHistory.length; i++){
+            volHis.push({
+                x: i,
+                volume: volumeHistory[i] = Math.round( (volumeHistory[i] - volumeMin) / volumeRange * 20 )
+            })
+        }
+        volHis = largestTriangleThreeBuckets(volHis, 140, "x", "volume" );
+        volumeHistory = [];
+        for (var i = 0; i < volHis.length; i++) {
+            volumeHistory.push(volHis[i].volume);
+        }
+        console.log(volumeHistory);
+
+        // **********
+        // **** PRICE
+        // **********
+
+        var priceMax = priceHistory.reduce(function(a, b) {
+            return Math.max(a, b);
+        });
+        var priceMin = priceHistory.reduce(function(a, b) {
+            return Math.min(a, b);
+        });
+        var priceRange = priceMax - priceMin;
+
+        priceHis = [];
+        for (var i = 0; i < priceHistory.length; i++){
+            priceHis.push({
+                x: i,
+                price: priceHistory[i] = Math.round( (priceHistory[i] - priceMin) / priceRange * 100 )
+            })
+        }
+        priceHis = largestTriangleThreeBuckets(priceHis, 140, "x", "price" );
+        priceHistory = [];
+        for (var i = 0; i < priceHis.length; i++) {
+            priceHistory.push(110-priceHis[i].price);
+        }
+        //console.log(priceHistory);
+
+        // **********
+        // **** SEND
+        // **********
+        var message = {
+          StockSymbol: translateCryptoSymbol(symbol),
+          StockPrice: price+"",
+          StockPriceChange: changePercent,
+          StockVolumeHistory: volumeHistory,
+          StockPriceHistory: priceHistory,
+          StockMarketStatus: settings.CryptoPriceHistoryHorizon + " price history"
+        }
+
+        console.log(JSON.stringify(message));
+        Pebble.sendAppMessage(message);
+
+
+      }
+    }
+  }
+  
+  req.send();
 }
 
-function getPriceHistory(symbol){
+function translateCryptoSymbol(symbol){
+  var translated = '';
+  switch(symbol){
+    case "btcusd-perpetual-future-inverse":
+    case "btceur":
+      translated = "BTC";
+      break;
+    case "ethusd-perpetual-future-inverse":
+    case "etheur":
+      translated = "ETH";
+      break;
+    case "bnbusd-perpetual-future-inverse":
+    case "bnbeur":
+      translated = "BNB";
+      break;
+    case "xrpusd-perpetual-future-inverse":
+    case "xrpeur":
+      translated = "XRP";
+      break;
+    case "ltcusd-perpetual-future-inverse":
+    case "ltceur":
+      translated = "LTC";
+      break;
+    case "linkusd-perpetual-future-inverse":
+    case "linkeur":
+      translated = "LINK";
+      break;
+    case "ltcusd-perpetual-future-inverse":
+    case "ltceur":
+      translated = "LTC";
+      break;
+    case "dotusd-perpetual-future-inverse":
+    case "doteur":
+      translated = "DOT";
+      break;  
+}
+
+  return translated;
+}
+
+
+function getStockPriceHistory(symbol){
     var req = new XMLHttpRequest();
-    if (settings.PriceHistoryHorizon == '1week' ){
+    if (settings.StockPriceHistoryHorizon == '1week' ){
         req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&outputsize=full&interval=5min&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
         req.onload = function(e) {
             if (req.readyState == 4) {
@@ -149,7 +285,7 @@ function getPriceHistory(symbol){
             }
         }
         req.send();
-    } else if (settings.PriceHistoryHorizon == '1month'){
+    } else if (settings.StockPriceHistoryHorizon == '1month'){
         req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&outputsize=full&interval=30min&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
         req.onload = function(e) {
             if (req.readyState == 4) {
@@ -270,7 +406,7 @@ function getPriceHistory(symbol){
             }
         }
         req.send();
-    } else if (settings.PriceHistoryHorizon == '1year'){
+    } else if (settings.StockPriceHistoryHorizon == '1year'){
         req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&outputsize=full&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
         req.onload = function(e) {
             if (req.readyState == 4) {
@@ -378,7 +514,7 @@ function getPriceHistory(symbol){
             }
         }
         req.send();
-    } else if (settings.PriceHistoryHorizon == '5years'){
+    } else if (settings.StockPriceHistoryHorizon == '5years'){
         req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY_ADJUSTED&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
         req.onload = function(e) {
             if (req.readyState == 4) {
@@ -393,6 +529,45 @@ function getPriceHistory(symbol){
     }
 }
 
+
+function getSimpleStockQuote(symbol){
+  var req = new XMLHttpRequest();
+  req.open('GET', 'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
+  req.onload = function(e) {
+      if (req.readyState == 4) {
+        // 200 - HTTP OK
+          if(req.status == 200) {
+            var response = JSON.parse(req.responseText);
+            console.log(JSON.stringify(response));
+
+            //make some more reasonable convenience variables
+            var price = Number(response["Global Quote"]["05. price"]);
+            price = formatStockPrice((price));
+
+            var changePercent = String(response["Global Quote"]["10. change percent"]);
+            changePercent = formatChangePercent(changePercent);
+            // changePercent = Number(changePercent.slice(0, changePercent.length-1));
+            // changePercent = changePercent.toFixed(2);
+            var volume = filterNumber(response["Global Quote"]["06. volume"]);
+
+            var stockData = {
+                StockSymbol: symbol,
+                StockPrice: price,
+                StockPriceChange: changePercent,
+                StockVolume: volume,
+                StockMarketStatus: getMarketStatus()
+            }
+
+            console.log(JSON.stringify(stockData));
+
+            Pebble.sendAppMessage(stockData);
+
+          }
+      }
+  }
+  req.send();
+
+}
 
 
 // function requestMultiStockData(){
