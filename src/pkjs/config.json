@@ -43,21 +43,21 @@
       {
         "type": "radiogroup",
         "messageKey": "DitherStyle",
-        "defaultValue": 0,
+        "defaultValue": "0",
         "label": "Dither Style",
         "description": "This defines the fill appearance of the graph.",
         "options": [
           {
             "label": "classic",
-            "value": 0
+            "value": "0"
           },
           {
             "label": "inverted",
-            "value": 1
+            "value": "1"
           },
           {
             "label": "none",
-            "value": 2
+            "value": "2"
           }
         ]
       }

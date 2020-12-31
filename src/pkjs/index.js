@@ -82,7 +82,8 @@ Pebble.addEventListener("webviewclosed", function(e){
     console.log(JSON.stringify(settings));
     Pebble.sendAppMessage({
         StockMarketStatus: "loading...",
-        DitherStyle: Number(settings.DitherStyle)
+        DitherStyle: Number(settings.DitherStyle),
+        ClearFace: 1
     });
 
     if (settings.AssetType == "stock") {
@@ -97,6 +98,8 @@ function getCryptoPriceHistory(symbol){
   var url = "https://api.cryptowat.ch/markets/binance/" + symbol + "/ohlc";
   if (symbol == "btcusd-perpetual-future-inverse") {
     url = "https://api.cryptowat.ch/markets/bitmex/btcusd-perpetual-future-inverse/ohlc";
+  } else if (symbol == "xrpusd-perpetual-future-inverse"){
+    url = "https://api.cryptowat.ch/markets/bitmex/xrpusd-perpetual-future-quanto/ohlc";
   }
 
   var time = 0;
@@ -131,10 +134,30 @@ function getCryptoPriceHistory(symbol){
         var priceHistory = [];
         var volumeHistory = [];
 
+        if (history.length < 144) {
+          var backfill = 144 - history.length;
+          var temp = [];
+          
+          for (var i = 0; i < history.length; i++){
+            temp.push(history[i][4]).toFixed(1);
+          }
+
+          var min = temp.reduce(function(a, b) {
+            return Math.min(a, b);
+          });
+
+          for (var i = 0; i < backfill; i++){
+            priceHistory.push(min - (min/2));
+            volumeHistory.push(0);
+          }
+        }
+
+
         for (var i = 0; i < history.length; i++){
             priceHistory.push(history[i][4]).toFixed(1);
             volumeHistory.push(Math.round(history[i][5]));
         }
+
 
         // priceHistory.reverse();
         // volumeHistory.reverse();

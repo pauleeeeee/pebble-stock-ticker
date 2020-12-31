@@ -42,7 +42,8 @@
       "DisplayMode": 200,
       "StockMarketStatus": 201,
       "DitherStyle": 202,
-      "AssetType": 203
+      "AssetType": 203,
+      "ClearFace": 300
     },
     "resources": {
       "media": [

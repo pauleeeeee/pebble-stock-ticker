@@ -112,8 +112,8 @@ static void s_single_view_layer_update_proc(Layer *layer, GContext *ctx){
 
   //black oval behind small price change text
   graphics_context_set_fill_color(ctx, GColorBlack);
-  //draw black bubble behind price change
   graphics_fill_rect(ctx, GRect((box.size.w/2)-30,box.origin.y+64, 60, 15), 4, GCornersAll);
+
   graphics_context_set_text_color(ctx, GColorBlack);
   //graphics_fill_rect(ctx, GRect((box.size.w/2)-30,box.origin.y+50, 60, 20), 4, GCornersAll);
   graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x+2, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, s_text_attributes);
@@ -158,6 +158,11 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
     persist_write_string(StockMarketStatus, market_status);
   }
 
+  // Tuple *clear_face_tuple = dict_find (iter, ClearFace);
+  // if (clear_face_tuple) {
+  //   clearFace()
+  // }
+
   Tuple *display_mode_tuple = dict_find (iter, DisplayMode);
   if (display_mode_tuple) {
     display_mode = display_mode_tuple->value->int32;
@@ -169,33 +174,28 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
     persist_write_int(DitherStyle, dither_style);
   }
 
-
-  // Tuple *stock_index_tuple = dict_find (iter, StockIndex);
-  // if (stock_index_tuple) {
-  //   stock_index = stock_index_tuple->value->int32;
-  //   APP_LOG(APP_LOG_LEVEL_DEBUG, "got tuple %d", StockIndex);
-  //   APP_LOG(APP_LOG_LEVEL_DEBUG, "value is %d", stock_index);
-  // }
-
   Tuple *stock_symbol_tuple = dict_find (iter, StockSymbol);
   if (stock_symbol_tuple){
     strncpy(s_stock.symbol, stock_symbol_tuple->value->cstring, sizeof(s_stock.symbol));
-    //persist_write_string(StockSymbol, s_stock.symbol);
+    persist_write_string(StockSymbol, s_stock.symbol);
   }
 
   Tuple *stock_price_tuple = dict_find (iter, StockPrice);
   if (stock_price_tuple){
     strncpy(s_stock.price, stock_price_tuple->value->cstring, sizeof(s_stock.price));
+    persist_write_string(StockPrice, s_stock.price);
   }
 
   Tuple *stock_price_change_tuple = dict_find (iter, StockPriceChange);
   if (stock_price_change_tuple){
     strncpy(s_stock.price_change, stock_price_change_tuple->value->cstring, sizeof(s_stock.price_change));
+    persist_write_string(StockPriceChange, s_stock.price_change);
   }
 
   Tuple *stock_volume_tuple = dict_find (iter, StockVolume);
   if (stock_volume_tuple){
     strncpy(s_stock.volume, stock_volume_tuple->value->cstring, sizeof(s_stock.volume));
+    persist_write_string(StockVolume, s_stock.volume);
   }
 
   Tuple *stock_price_history_tuple = dict_find (iter, StockPriceHistory);
@@ -301,12 +301,24 @@ static void prv_window_load(Window *window) {
     dither_style = persist_read_int(DitherStyle);
   }
 
-  if(persist_exists(StockPriceHistory)){
-    persist_read_data(StockPriceHistory, s_price_history, sizeof(s_price_history));
+  if(persist_exists(StockPrice)){
+    persist_read_string(StockPrice, s_stock.price, sizeof(s_stock.price));
+  }
+
+  if(persist_exists(StockPriceChange)){
+    persist_read_string(StockPriceChange, s_stock.price_change, sizeof(s_stock.price_change));
+  }
+
+  if(persist_exists(StockSymbol)){
+    persist_read_string(StockSymbol, s_stock.symbol, sizeof(s_stock.symbol));
   }
 
   if(persist_exists(StockVolumeHistory)){
     persist_read_data(StockVolumeHistory, s_volume_history, sizeof(s_volume_history));
+  }
+  
+  if(persist_exists(StockPriceHistory)){
+    persist_read_data(StockPriceHistory, s_price_history, sizeof(s_price_history));
   }
 
   //draw_stock_data();
