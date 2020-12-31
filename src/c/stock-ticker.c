@@ -18,6 +18,7 @@ int dither_style = 0;
 char market_status[128];
 static uint8_t s_price_history[140];
 static uint8_t s_volume_history[140];
+static GTextAttributes *s_text_attributes;
 
 
 static void update_time() {
@@ -71,20 +72,8 @@ static void s_single_view_layer_update_proc(Layer *layer, GContext *ctx){
 
     if (dither_style == 0) {
       draw_gradient_rect(ctx, box, GColorBlack, GColorWhite, BOTTOM_TO_TOP);
-      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y, box.size.w, 10), GColorBlack, GColorWhite, DITHER_90_PERCENT);
-      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+10, box.size.w, 20), GColorBlack, GColorWhite, DITHER_70_PERCENT);
-      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+30, box.size.w, 20), GColorBlack, GColorWhite, DITHER_40_PERCENT);
-      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+50, box.size.w, 20), GColorBlack, GColorWhite, DITHER_30_PERCENT);
-      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+70, box.size.w, 20), GColorBlack, GColorWhite, DITHER_20_PERCENT);
-      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+90, box.size.w, 10), GColorBlack, GColorWhite, DITHER_10_PERCENT);
     } else if (dither_style == 1) {
-      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y, box.size.w+2, 20), GColorBlack, GColorWhite, DITHER_10_PERCENT);
-      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+20, box.size.w+2, 20), GColorBlack, GColorWhite, DITHER_10_PERCENT);
-      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+40, box.size.w+2, 20), GColorBlack, GColorWhite, DITHER_25_PERCENT);
-      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+60, box.size.w, 20), GColorBlack, GColorWhite, DITHER_40_PERCENT);
-      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+80, box.size.w, 20), GColorBlack, GColorWhite, DITHER_70_PERCENT);
-      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+100, box.size.w, 15), GColorBlack, GColorWhite, DITHER_90_PERCENT);
-      draw_dithered_rect(ctx, GRect(box.origin.x, box.origin.y+115, box.size.w, 15), GColorBlack, GColorWhite, DITHER_100_PERCENT);
+      draw_gradient_rect(ctx, box, GColorBlack, GColorWhite, TOP_TO_BOTTOM);
     }
 
     //mask dithering with black line draws
@@ -97,12 +86,19 @@ static void s_single_view_layer_update_proc(Layer *layer, GContext *ctx){
 
   }
 
-  //draw volume and price history
-  int offset = 0;
-  graphics_context_set_stroke_color(ctx, GColorWhite);
-  graphics_draw_line(ctx, GPoint(box.origin.x, box.size.h - offset), GPoint(box.size.w, box.size.h - offset));
+  
+  //black oval behind small price change text
+  graphics_context_set_fill_color(ctx, GColorBlack);
+  //draw black bubble behind price
+  graphics_fill_rect(ctx, GRect((box.size.w/2)-30,box.origin.y+64, 60, 15), 4, GCornersAll);
 
-  if (dither_style == 0){
+
+  //draw volume and price history
+  int offset = 1;
+
+  if (dither_style == 1){
+    graphics_context_set_stroke_color(ctx, GColorBlack);
+    graphics_draw_line(ctx, GPoint(box.origin.x, box.size.h - offset), GPoint(box.size.w, box.size.h - offset));
     for (int i = 0; i < 139; i++){
       graphics_context_set_stroke_color(ctx, GColorBlack);
       graphics_draw_line(ctx, GPoint(box.origin.x + i, box.size.h - offset), GPoint(box.origin.x + i, box.size.h - offset - s_volume_history[i]));
@@ -110,38 +106,31 @@ static void s_single_view_layer_update_proc(Layer *layer, GContext *ctx){
       graphics_draw_line(ctx, GPoint(box.origin.x + i, s_price_history[i]-10), GPoint(box.origin.x + i + 1, s_price_history[i + 1]-10));
     }
   } else {
-      graphics_context_set_stroke_color(ctx, GColorWhite);
-      for (int i = 0; i < 139; i++){
+    graphics_context_set_stroke_color(ctx, GColorWhite);
+    graphics_draw_line(ctx, GPoint(box.origin.x, box.size.h - offset), GPoint(box.size.w, box.size.h - offset));
+    for (int i = 0; i < 139; i++){
       graphics_draw_line(ctx, GPoint(box.origin.x + i, box.size.h - offset), GPoint(box.origin.x + i, box.size.h - offset - s_volume_history[i]));
       graphics_draw_line(ctx, GPoint(box.origin.x + i, s_price_history[i]-10), GPoint(box.origin.x + i + 1, s_price_history[i + 1]-10));
     }
     graphics_draw_line(ctx, GPoint(138, box.size.h - offset), GPoint(138, box.size.h - offset - s_volume_history[139]));
   }
 
+  //black mask / drop shadow for price
+  graphics_context_set_text_color(ctx, GColorBlack);
+  //graphics_fill_rect(ctx, GRect((box.size.w/2)-30,box.origin.y+50, 60, 20), 4, GCornersAll);
+  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x+2, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, s_text_attributes);
+
+
 
   //draw symbol text
   graphics_context_set_text_color(ctx, GColorWhite);
-  graphics_draw_text(ctx, s_stock.symbol, s_symbol_font, GRect(box.origin.x, box.origin.y+10, box.size.w, box.size.h-10), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stock.symbol, s_symbol_font, GRect(box.origin.x, box.origin.y+10, box.size.w, box.size.h-10), GTextOverflowModeWordWrap, GTextAlignmentCenter, s_text_attributes);
   
-  //draw black bubble behind price
-  graphics_context_set_text_color(ctx, GColorBlack);
-  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x+2, box.origin.y+34, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x-2, box.origin.y+34, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x, box.origin.y+32, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x+2, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x-2, box.origin.y+36, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x-2, box.origin.y+32, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x+2, box.origin.y+32, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-
-  //black oval behind small price change text
-  graphics_context_set_fill_color(ctx, GColorBlack);
-  graphics_fill_rect(ctx, GRect((box.size.w/2)-30,box.origin.y+64, 60, 15), 4, GCornersAll);
 
   //draw price and price change
   graphics_context_set_text_color(ctx, GColorWhite);
-  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x, box.origin.y+34, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
-  graphics_draw_text(ctx, s_stock.price_change, s_small_font, GRect(box.origin.x, box.origin.y+62, box.size.w, box.size.h-62), GTextOverflowModeWordWrap, GTextAlignmentCenter, graphics_text_attributes_create());
+  graphics_draw_text(ctx, s_stock.price, s_medium_font, GRect(box.origin.x, box.origin.y+34, box.size.w, box.size.h-34), GTextOverflowModeWordWrap, GTextAlignmentCenter, s_text_attributes);
+  graphics_draw_text(ctx, s_stock.price_change, s_small_font, GRect(box.origin.x, box.origin.y+62, box.size.w, box.size.h-62), GTextOverflowModeWordWrap, GTextAlignmentCenter, s_text_attributes);
 
 }
 
@@ -245,6 +234,8 @@ static void prv_window_load(Window *window) {
   GRect bounds = layer_get_bounds(window_layer);
 
   window_set_background_color(window, GColorBlack);
+
+  s_text_attributes = graphics_text_attributes_create();
 
   //declare fonts
   //s_big_font = fonts_get_system_font(FONT_KEY_BITHAM_42_LIGHT);

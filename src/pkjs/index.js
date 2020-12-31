@@ -12,17 +12,13 @@ var _ = require('lodash');
 
 //declare global settings variable
 var settings = {};
-// var settings = {
-//     APIKey: "IGX5JBZCJJ3ZJVP3",
-//     DisplayMode: 0,
-//     StockSymbol1: "GOOGL",
-//     StockSymbol2: "MDB",
-//     StockSymbol3: "GOOGL",
-//     StockSymbol4: "CLF",
-//     StockSymbol5: "VOO",
-//     PriceHistoryHorizon: "1year",
-//     DitherStyle: 0
-// };
+var settings = {
+    APIKey: "IGX5JBZCJJ3ZJVP3",
+    DisplayMode: 0,
+    StockSymbol1: "AAL",
+    PriceHistoryHorizon: "1month",
+    DitherStyle: 2
+};
 
 
 var lastCall = 0;
@@ -32,7 +28,7 @@ Pebble.addEventListener("ready",
     function(e) {
 
         //on load, get settings from local storage if they have already been set by clay. If they have not been set, define settings as a blank object.
-        settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
+        //settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
         console.log(JSON.stringify(settings));
 
         //lastCall = localStorage.getItem('lastCall') || 0;
@@ -45,7 +41,7 @@ Pebble.addEventListener("ready",
             });
         } else {
             //queryLoop();
-            getSimpleQuote(settings.StockSymbol1);
+            //getSimpleQuote(settings.StockSymbol1);
             getPriceHistory(settings.StockSymbol1);
         }
 
@@ -75,14 +71,14 @@ Pebble.addEventListener("webviewclosed", function(e){
     console.log('from web view closed:');
     //// settings = clay.getSettings(e.response, true);
     //// localStorage.setItem("settings", JSON.stringify(settings));
-    settings = JSON.parse(localStorage.getItem('clay-settings'));
+    //settings = JSON.parse(localStorage.getItem('clay-settings'));
     console.log(JSON.stringify(settings));
     Pebble.sendAppMessage({
         StockMarketStatus: "loading...",
         DitherStyle: settings.DitherStyle
     });
 
-    getSimpleQuote(settings.StockSymbol1);
+    //getSimpleQuote(settings.StockSymbol1);
     getPriceHistory(settings.StockSymbol1);
 });
 
@@ -93,30 +89,30 @@ function getSimpleQuote(symbol){
         if (req.readyState == 4) {
           // 200 - HTTP OK
             if(req.status == 200) {
-                var response = JSON.parse(req.responseText);
-                console.log(JSON.stringify(response));
+              var response = JSON.parse(req.responseText);
+              console.log(JSON.stringify(response));
 
-                //make some more reasonable convenience variables
-                var price = Number(response["Global Quote"]["05. price"]);
-                price = formatStockPrice(price);
+              //make some more reasonable convenience variables
+              var price = Number(response["Global Quote"]["05. price"]);
+              price = formatStockPrice((price));
 
-                var changePercent = String(response["Global Quote"]["10. change percent"]);
-                changePercent = formatChangePercent(changePercent);
-                // changePercent = Number(changePercent.slice(0, changePercent.length-1));
-                // changePercent = changePercent.toFixed(2);
-                var volume = filterNumber(response["Global Quote"]["06. volume"]);
+              var changePercent = String(response["Global Quote"]["10. change percent"]);
+              changePercent = formatChangePercent(changePercent);
+              // changePercent = Number(changePercent.slice(0, changePercent.length-1));
+              // changePercent = changePercent.toFixed(2);
+              var volume = filterNumber(response["Global Quote"]["06. volume"]);
 
-                var stockData = {
-                    "StockSymbol": symbol,
-                    "StockPrice": price,
-                    "StockPriceChange": changePercent,
-                    "StockVolume": volume,
-                    "StockMarketStatus": getMarketStatus()
-                }
+              var stockData = {
+                  StockSymbol: symbol,
+                  StockPrice: price,
+                  StockPriceChange: changePercent,
+                  StockVolume: volume,
+                  StockMarketStatus: getMarketStatus()
+              }
 
-                console.log(JSON.stringify(stockData));
+              console.log(JSON.stringify(stockData));
 
-                Pebble.sendAppMessage(stockData);
+              Pebble.sendAppMessage(stockData);
 
             }
         }
@@ -140,7 +136,6 @@ function getPriceHistory(symbol){
                     var changePercent = "1.00%";
                     var volume = _.values(response["Time Series (5min)"])[0]["5. volume"];
                     var stockData = {
-                        "StockIndex": i,
                         "StockSymbol": symbol,
                         "StockPrice": formatStockPrice(price),
                         "StockPriceChange": formatChangePercent(changePercent),
@@ -154,29 +149,123 @@ function getPriceHistory(symbol){
         }
         req.send();
     } else if (settings.PriceHistoryHorizon == '1month'){
-        console.log(interval)
         req.open('GET', 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&outputsize=full&interval=30min&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
         req.onload = function(e) {
             if (req.readyState == 4) {
               // 200 - HTTP OK
-                if(req.status == 200) {
-                    var response = JSON.parse(req.responseText);
-                    //console.log(JSON.stringify(response));
-                    //console.log(_.values(response["Time Series (30min)"]).length);
-                    var price = Number(_.values(response["Time Series (30min)"])[0]["4. close"]);
-                    var changePercent = "1.00%";
-                    var volume = _.values(response["Time Series (30min)"])[0]["5. volume"];
-                    var stockData = {
-                        "StockIndex": i,
-                        "StockSymbol": symbol,
-                        "StockPrice": formatStockPrice(price),
-                        "StockPriceChange": formatChangePercent(changePercent),
-                        "StockVolume": filterNumber(volume),
-                        "StockMarketStatus": getMarketStatus()
-                    }
-                    console.log(JSON.stringify(stockData));
-                    Pebble.sendAppMessage(stockData);
+              if(req.status == 200) {
+                var response = JSON.parse(req.responseText);
+                //console.log(JSON.stringify(response));
+
+                
+                var his = _.values(response["Time Series (30min)"]);
+                var dates = _.keys(response["Time Series (30min)"]);
+                var history = [];
+
+                //return only entries in the normal trading window ('market open')
+                for (var i = 0; i < dates.length; i++) {
+                  if (checkMarketStatus(dates[i]) == "market is open") {
+                    console.log(dates[i]);
+                    history.push(his[i]);
+                  }
                 }
+
+                console.log(JSON.stringify(history[history.length-1]))
+                
+                //console.log(history.length);
+
+                var priceHistory = [];
+                var volumeHistory = [];
+
+                if (history.length < 260){
+                    Pebble.sendAppMessage({
+                        StockMarketStatus: "price history failed"
+                    })
+                }
+
+
+                for (var i = 0; i <= 260; i++){
+                    priceHistory.push(Number(history[i]["4. close"]).toFixed(2));
+                    volumeHistory.push(history[i]["5. volume"]);
+                }
+
+                var price = formatStockPrice(Number(priceHistory[0]));
+
+                var changePercent = "( " + Number(((priceHistory[0] - priceHistory[priceHistory.length-1]) / priceHistory[priceHistory.length-1])*100).toFixed(2) + "% )";
+
+                console.log('pricehistory.length-1')
+                console.log(priceHistory[priceHistory.length-1]);
+
+                priceHistory.reverse();
+                volumeHistory.reverse();
+
+                // **********
+                // **** VOL
+                // **********
+
+                var volumeMax = volumeHistory.reduce(function(a, b) {
+                    return Math.max(a, b);
+                });
+                var volumeMin = volumeHistory.reduce(function(a, b) {
+                    return Math.min(a, b);
+                });
+                var volumeRange = volumeMax - volumeMin;
+
+                volHis = [];
+                for (var i = 0; i < volumeHistory.length; i++){
+                    volHis.push({
+                        x: i,
+                        volume: volumeHistory[i] = Math.round( (volumeHistory[i] - volumeMin) / volumeRange * 20 )
+                    })
+                }
+                volHis = largestTriangleThreeBuckets(volHis, 140, "x", "volume" );
+                volumeHistory = [];
+                for (var i = 0; i < volHis.length; i++) {
+                    volumeHistory.push(volHis[i].volume);
+                }
+                console.log(volumeHistory);
+
+                // **********
+                // **** PRICE
+                // **********
+
+                var priceMax = priceHistory.reduce(function(a, b) {
+                    return Math.max(a, b);
+                });
+                var priceMin = priceHistory.reduce(function(a, b) {
+                    return Math.min(a, b);
+                });
+                var priceRange = priceMax - priceMin;
+
+                priceHis = [];
+                for (var i = 0; i < priceHistory.length; i++){
+                    priceHis.push({
+                        x: i,
+                        price: priceHistory[i] = Math.round( (priceHistory[i] - priceMin) / priceRange * 100 )
+                    })
+                }
+                priceHis = largestTriangleThreeBuckets(priceHis, 140, "x", "price" );
+                priceHistory = [];
+                for (var i = 0; i < priceHis.length; i++) {
+                    priceHistory.push(110-priceHis[i].price);
+                }
+                console.log(priceHistory);
+
+                // **********
+                // **** SEND
+                // **********
+                var message = {
+                  StockSymbol: symbol,
+                  StockPrice: price,
+                  StockPriceChange: changePercent,
+                  StockVolumeHistory: volumeHistory,
+                  StockPriceHistory: priceHistory,
+                  StockMarketStatus: getMarketStatus()
+                }
+                console.log(JSON.stringify(message));
+                Pebble.sendAppMessage(message);
+                
+              }
             }
         }
         req.send();
@@ -185,92 +274,106 @@ function getPriceHistory(symbol){
         req.onload = function(e) {
             if (req.readyState == 4) {
               // 200 - HTTP OK
-                if(req.status == 200) {
-                    var response = JSON.parse(req.responseText);
-                    //console.log(JSON.stringify(response));
-                    var history = _.values(response["Time Series (Daily)"]);
-                    //console.log(history.length);
+              if(req.status == 200) {
+                var response = JSON.parse(req.responseText);
+                //console.log(JSON.stringify(response));
 
-                    var priceHistory = [];
-                    var volumeHistory = [];
+                
+                var history = _.values(response["Time Series (Daily)"]);
+                //console.log(history.length);
 
-                    if (history.length < 260){
-                        Pebble.sendAppMessage({
-                            StockMarketStatus: "error in price history"
-                        })
-                    }
-                    for (var i = 0; i <= 260; i++){
-                        priceHistory.push(Number(history[i]["5. adjusted close"]).toFixed(2));
-                        volumeHistory.push(history[i]["6. volume"]);
-                    }
+                var priceHistory = [];
+                var volumeHistory = [];
 
-                    priceHistory.reverse();
-                    volumeHistory.reverse();
-
-                    // **********
-                    // **** VOL
-                    // **********
-
-                    var volumeMax = volumeHistory.reduce(function(a, b) {
-                        return Math.max(a, b);
-                    });
-                    var volumeMin = volumeHistory.reduce(function(a, b) {
-                        return Math.min(a, b);
-                    });
-                    var volumeRange = volumeMax - volumeMin;
-
-                    volHis = [];
-                    for (var i = 0; i < volumeHistory.length; i++){
-                        volHis.push({
-                            x: i,
-                            volume: volumeHistory[i] = Math.round( (volumeHistory[i] - volumeMin) / volumeRange * 20 )
-                        })
-                    }
-                    volHis = largestTriangleThreeBuckets(volHis, 140, "x", "volume" );
-                    volumeHistory = [];
-                    for (var i = 0; i < volHis.length; i++) {
-                        volumeHistory.push(volHis[i].volume);
-                    }
-                    console.log(volumeHistory);
-
-                    // **********
-                    // **** PRICE
-                    // **********
-
-                    var priceMax = priceHistory.reduce(function(a, b) {
-                        return Math.max(a, b);
-                    });
-                    var priceMin = priceHistory.reduce(function(a, b) {
-                        return Math.min(a, b);
-                    });
-                    var priceRange = priceMax - priceMin;
-
-                    priceHis = [];
-                    for (var i = 0; i < priceHistory.length; i++){
-                        priceHis.push({
-                            x: i,
-                            price: priceHistory[i] = Math.round( (priceHistory[i] - priceMin) / priceRange * 100 )
-                        })
-                    }
-                    priceHis = largestTriangleThreeBuckets(priceHis, 140, "x", "price" );
-                    priceHistory = [];
-                    for (var i = 0; i < priceHis.length; i++) {
-                        priceHistory.push(110-priceHis[i].price);
-                    }
-                    console.log(priceHistory);
-
-                    // **********
-                    // **** SEND
-                    // **********
-
+                if (history.length < 252){
                     Pebble.sendAppMessage({
-                        StockVolumeHistory:volumeHistory,
-                        StockPriceHistory:priceHistory
+                        StockMarketStatus: "price history failed"
                     })
-
-                    
-
                 }
+
+
+                for (var i = 0; i <= 252; i++){
+                    priceHistory.push(Number(history[i]["5. adjusted close"]).toFixed(2));
+                    volumeHistory.push(history[i]["6. volume"]);
+                }
+
+                var price = formatStockPrice(Number(priceHistory[0]));
+
+                var changePercent = "( " + Number(((priceHistory[0] - priceHistory[priceHistory.length-1]) / priceHistory[priceHistory.length-1])*100).toFixed(2) + "% )";
+                
+                console.log('oldest date')
+                console.log(JSON.stringify(_.keys(response["Time Series (Daily)"])[priceHistory.length-1]));
+                console.log(JSON.stringify(history[priceHistory.length-1]));
+
+                priceHistory.reverse();
+                volumeHistory.reverse();
+
+                // **********
+                // **** VOL
+                // **********
+
+                var volumeMax = volumeHistory.reduce(function(a, b) {
+                    return Math.max(a, b);
+                });
+                var volumeMin = volumeHistory.reduce(function(a, b) {
+                    return Math.min(a, b);
+                });
+                var volumeRange = volumeMax - volumeMin;
+
+                volHis = [];
+                for (var i = 0; i < volumeHistory.length; i++){
+                    volHis.push({
+                        x: i,
+                        volume: volumeHistory[i] = Math.round( (volumeHistory[i] - volumeMin) / volumeRange * 20 )
+                    })
+                }
+                volHis = largestTriangleThreeBuckets(volHis, 140, "x", "volume" );
+                volumeHistory = [];
+                for (var i = 0; i < volHis.length; i++) {
+                    volumeHistory.push(volHis[i].volume);
+                }
+                console.log(volumeHistory);
+
+                // **********
+                // **** PRICE
+                // **********
+
+                var priceMax = priceHistory.reduce(function(a, b) {
+                    return Math.max(a, b);
+                });
+                var priceMin = priceHistory.reduce(function(a, b) {
+                    return Math.min(a, b);
+                });
+                var priceRange = priceMax - priceMin;
+
+                priceHis = [];
+                for (var i = 0; i < priceHistory.length; i++){
+                    priceHis.push({
+                        x: i,
+                        price: priceHistory[i] = Math.round( (priceHistory[i] - priceMin) / priceRange * 100 )
+                    })
+                }
+                priceHis = largestTriangleThreeBuckets(priceHis, 140, "x", "price" );
+                priceHistory = [];
+                for (var i = 0; i < priceHis.length; i++) {
+                    priceHistory.push(110-priceHis[i].price);
+                }
+                console.log(priceHistory);
+
+                // **********
+                // **** SEND
+                // **********
+                var message = {
+                  StockSymbol: symbol,
+                  StockPrice: price,
+                  StockPriceChange: changePercent,
+                  StockVolumeHistory: volumeHistory,
+                  StockPriceHistory: priceHistory,
+                  StockMarketStatus: getMarketStatus()
+                }
+                console.log(JSON.stringify(message));
+                Pebble.sendAppMessage(message);
+              }
             }
         }
         req.send();
@@ -318,6 +421,27 @@ function getMarketStatus(){
             return "market is open"
         }
     }
+}
+
+function checkMarketStatus(date){
+  var nycTime = moment(date);
+  if(check_holiday(new Date(date))){
+      return "market is closed (holiday)";
+  } else if (nycTime.day() == 0 || nycTime.day() == 6){
+      return "market is closed"
+  } else {
+      if (nycTime.hours() < 7 || nycTime.hours() > 19) {
+          return "market is closed"
+      } else if (nycTime.hours() == 8 || ( nycTime.hours() == 9 && nycTime.minutes() < 30)) {
+          return "pre-market trading"
+      } else if (nycTime.hours() > 16 && nycTime.hours() <= 19) {
+          return "after-market trading"
+      } else if (nycTime.hours() == 16 && nycTime.minutes() > 0) {
+        return "after-market trading"
+      } else {
+          return "market is open"
+      }
+  }
 }
 
 //helper function to format change percent
