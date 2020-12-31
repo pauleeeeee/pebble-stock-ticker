@@ -17,7 +17,8 @@ var settings = {
     DisplayMode: 0,
     StockSymbol1: "AAL",
     PriceHistoryHorizon: "1month",
-    DitherStyle: 2
+    DitherStyle: 2,
+    AssetType: "stock"
 };
 
 

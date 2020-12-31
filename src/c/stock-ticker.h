@@ -18,3 +18,4 @@ typedef struct {
 #define DisplayMode 200
 #define StockMarketStatus 201
 #define DitherStyle 202
+#define AssetType 203

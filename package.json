@@ -41,7 +41,8 @@
       "StockVolumeHistory": 106,
       "DisplayMode": 200,
       "StockMarketStatus": 201,
-      "DitherStyle": 202
+      "DitherStyle": 202,
+      "AssetType": 203
     },
     "resources": {
       "media": [

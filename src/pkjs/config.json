@@ -1,84 +1,117 @@
 [
-    { 
-        "type": "heading", 
-        "defaultValue": "StockFace" 
-    },
-    {
-        "type":"section",
-        "items":[
-            {
-                "type": "text",
-                "defaultValue": "This watch face was developed by swansswansswansswanssosoft, a member of the Rebble community. Join the movement today! http://discord.gg/aRUAYFN"
-            },
-            {
-                "type": "heading",
-                "defaultValue": "Configuration"
-            },
-            {
-                "type":"input",
-                "messageKey":"APIKey",
-                "label":"Alpha Vantage API Key",
-                "description":"You need an API key from Alpha Vantage. You can get one for free here: https://www.alphavantage.co/support/#api-key",
-                "defaultValue":""
-            },
-            {
-                "type":"input",
-                "messageKey":"StockSymbol1",
-                "label":"Stock Symbol",
-                "defaultValue":"VOO",
-                "description": "Enter the stock symbol of your choice. Make sure the symbol is spelled correctly and does contain any extra characters like trailing white spaces. You can add pretty much any publicly traded equity from the major exchanges."
-            },
-            {
-                "type": "select",
-                "messageKey": "PriceHistoryHorizon",
-                "defaultValue": "1year",
-                "label": "Price History Horizon",
-                "description": "How far back do you want to see the price history? Price histories are always adjusted for splits.",
-                "options": [
-                  { 
-                    "label": "5 days", 
-                    "value": "5days"
-                  },
-                  { 
-                    "label": "1 month",
-                    "value": "1month"
-                  },
-                  {
-                    "label": "1 year",
-                    "value": "1year"
-                  },
-                  {
-                    "label": "5 years",
-                    "value": "5years"
-                  }
-                ]
-            },
-            {
-                "type": "select",
-                "messageKey": "DitherStyle",
-                "defaultValue": 0,
-                "label": "Dither Style",
-                "description": "This defines the fill appearance of the graph.",
-                "options": [
-                  { 
-                    "label": "classic", 
-                    "value": 0
-                  },
-                  { 
-                    "label": "inverted",
-                    "value": 1
-                  },
-                  {
-                    "label": "none",
-                    "value": 2
-                  }
-                ]
-            }
-
+  {
+    "type": "heading",
+    "defaultValue": "Introduction"
+  },
+  {
+    "type": "section",
+    "items": [
+      {
+        "type": "text",
+        "defaultValue": "This watchface was developed by swansswansswansswanssosoft, a member of the Rebble community. Join the movement today! http://discord.gg/aRUAYFN"
+      },
+      {
+        "type": "text",
+        "defaultValue": "You can use this watchface to display the current and historical price of most cryptocurriences as well as most publicly traded stocks on the major exchanges. Unfortunately, real-time data is not currently available for stocks (it is always day old)."
+      }
+    ]
+  },
+  {
+    "type": "heading",
+    "defaultValue": "Configuration"
+  },
+  {
+    "type:": "section",
+    "items": [
+      {
+        "type": "radiogroup",
+        "messageKey": "AssetType",
+        "label": "Asset Type",
+        "description": "Declare which asset type you want to view; cryptocurrency or stock. You can configure both separately below.",
+        "options": [
+          {
+            "label": "Cryptocurrency",
+            "value": "crypto"
+          },
+          {
+            "label": "Stock",
+            "value": "stock"
+          }
         ]
-    },
-    {
-        "type":"submit",
-        "defaultValue":"save"
-    }
+      },
+      {
+        "type": "select",
+        "messageKey": "DitherStyle",
+        "defaultValue": 0,
+        "label": "Dither Style",
+        "description": "This defines the fill appearance of the graph.",
+        "options": [
+          {
+            "label": "classic",
+            "value": 0
+          },
+          {
+            "label": "inverted",
+            "value": 1
+          },
+          {
+            "label": "none",
+            "value": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "heading",
+    "defaultValue": "Configure Stock"
+  },
+  {
+    "type": "section",
+    "items": [
+      {
+        "type": "input",
+        "messageKey": "APIKey",
+        "label": "Alpha Vantage API Key",
+        "description": "You need an API key from Alpha Vantage. You can get one for free here: https://www.alphavantage.co/support/#api-key",
+        "defaultValue": ""
+      },
+      {
+        "type": "input",
+        "messageKey": "StockSymbol1",
+        "label": "Stock Symbol",
+        "defaultValue": "VOO",
+        "description": "Enter the stock symbol of your choice. Make sure the symbol is spelled correctly and does contain any extra characters like trailing white spaces. You can add pretty much any publicly traded equity from the major exchanges."
+      },
+      {
+        "type": "select",
+        "messageKey": "PriceHistoryHorizon",
+        "defaultValue": "1year",
+        "label": "Price History Horizon",
+        "description": "How far back do you want to see the price history? Price histories are always adjusted for splits.",
+        "options": [
+          {
+            "label": "5 days",
+            "value": "5days"
+          },
+          {
+            "label": "1 month",
+            "value": "1month"
+          },
+          {
+            "label": "1 year",
+            "value": "1year"
+          },
+          {
+            "label": "5 years",
+            "value": "5years"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "submit",
+    "defaultValue": "save"
+  }
 ]
