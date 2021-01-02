@@ -2,10 +2,10 @@
 var Clay = require('pebble-clay');
 var clayConfig = require('./config.json');
 var clay = new Clay(clayConfig, null, { autoHandleEvents: true });
-var moment = require('moment-timezone');
 
 //helper libraries
 var _ = require('lodash');
+var moment = require('moment-timezone');
 
 //include MessageQueue system
 // var MessageQueue = require('message-queue-pebble');
@@ -15,12 +15,13 @@ var settings = {};
 // var settings = {
 //     APIKey: "",
 //     DisplayMode: 0,
-//     StockSymbol: "AAL",
+//     StockSymbol: "TSLA",
 //     StockPriceHistoryHorizon: "1month",
 //     DitherStyle: 2,
 //     AssetType: "crypto",
 //     CryptoSymbol: "btcusd-perpetual-future-inverse",
-//     CryptoPriceHistoryHorizon: "1y"
+//     CryptoPriceHistoryHorizon: "1m",
+//     RefreshInterval: "5"
 // };
 
 
@@ -29,45 +30,37 @@ var lastCall = 0;
 //on load function
 Pebble.addEventListener("ready",
     function(e) {
+      //on load, get settings from local storage if they have already been set by clay. If they have not been set, define settings as a blank object.
+      settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
+      console.log(JSON.stringify(settings));
 
-        //on load, get settings from local storage if they have already been set by clay. If they have not been set, define settings as a blank object.
-        settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
-        console.log(JSON.stringify(settings));
+      lastCall = localStorage.getItem('lastCall') || 0;
 
-        //lastCall = localStorage.getItem('lastCall') || 0;
-
-        //if settings is a blank object, send a configuration notification to the user
-        if (settings == {}){
-            //Pebble.showSimpleNotificationOnPebble("Heads up!", "Add stocks in the watchface configuration page inside the Pebble phone app.");
-            Pebble.sendAppMessage({
-                "StockMarketStatus": "needs configuration"
-            });
-        } else {
-            //queryLoop();
-            //getSimpleQuote(settings.StockSymbol);
-            if (settings.AssetType == "stock") {
-              getStockPriceHistory(settings.StockSymbol);
-            } else if (settings.AssetType == "crypto") {
-              getCryptoPriceHistory(settings.CryptoSymbol)
-            }
-        }
-
-        
-        //when the watchface loads, check market status; if the status is the same as last check, do nothing; if the status is new, send appmessage
-        //console.log(getMarketStatus());
-        // var marketStatus = getMarketStatus();
-        // if (localStorage.getItem('lastMarketStatus') != marketStatus) {
-        //     Pebble.sendAppMessage({
-        //         StockMarketStatus: marketStatus
-        //     }, function(){
-        //         localStorage.setItem('lastMarketStatus', marketStatus)
-        //     });
-        // }
-        
-
+      //if settings is a blank object, send a configuration notification to the user
+      if (settings == {}){
+        Pebble.sendAppMessage({
+          "StockMarketStatus": "needs configuration"
+        });
+      } else {
+        fetchLoop();
+      }
     }
 );
 
+function fetchLoop(){
+  var now = new Date().getTime();
+  lastCall = localStorage.getItem('lastCall') || 0;
+  var interval = settings.RefreshInterval * 60000;
+  if ( now - lastCall > interval ) {
+    console.log('updating');
+    if (settings.AssetType == "stock") {
+      getStockPriceHistory(settings.StockSymbol);
+    } else if (settings.AssetType == "crypto") {
+      getCryptoPriceHistory(settings.CryptoSymbol);
+    }
+  }
+  setTimeout(function(){fetchLoop()},60000);
+}
 
 //for clay to show the config page...
 Pebble.addEventListener('showConfiguration', function(e) {
@@ -110,7 +103,7 @@ function getCryptoPriceHistory(symbol){
     case "12h": time = moment().subtract(12, "hours").unix(); period = 300; break;
     case "1d": time = moment().subtract(1, "days").unix(); period = 300; break;
     case "1w": time = moment().subtract(7, "days").unix(); period = 3600; break;
-    case "1m": time = moment().subtract(1, "months").unix(); period = 21600; break;
+    case "1m": time = moment().subtract(1, "months").unix(); period = 14400; break;
     case "1y": time = moment().subtract(1, "years").unix(); period = 86400; break;
     case "5y": time = moment().subtract(5, "years").unix(); period = 604800; break;
   }
@@ -159,11 +152,11 @@ function getCryptoPriceHistory(symbol){
         }
 
 
-        // priceHistory.reverse();
-        // volumeHistory.reverse();
-
         var price = formatStockPrice(priceHistory[priceHistory.length-1]);
         var changePercent = "( " + Number(((priceHistory[priceHistory.length-1] - priceHistory[0]) / priceHistory[0])*100).toFixed(2) + "% )";
+
+        var graphHeight = 100;
+        
 
         // **********
         // **** VOL
@@ -207,7 +200,7 @@ function getCryptoPriceHistory(symbol){
         for (var i = 0; i < priceHistory.length; i++){
             priceHis.push({
                 x: i,
-                price: priceHistory[i] = Math.round( (priceHistory[i] - priceMin) / priceRange * 100 )
+                price: Math.round( (priceHistory[i] - priceMin) / priceRange * 100 )
             })
         }
         priceHis = largestTriangleThreeBuckets(priceHis, 140, "x", "price" );
@@ -230,7 +223,7 @@ function getCryptoPriceHistory(symbol){
         }
 
         console.log(JSON.stringify(message));
-        Pebble.sendAppMessage(message);
+        Pebble.sendAppMessage(message, localStorage.setItem("lastCall", JSON.stringify(new Date().getTime())));
 
 
       }
@@ -786,85 +779,85 @@ function GoodFriday(Y) {  // calculates Easter Sunday and subtracts 2 days
 }
 
 
-// polyfill for ancient iOS JS environment
-// Production steps of ECMA-262, Edition 6, 22.1.2.1
-if (!Array.from) {
-    Array.from = (function () {
-      var toStr = Object.prototype.toString;
-      var isCallable = function (fn) {
-        return typeof fn === 'function' || toStr.call(fn) === '[object Function]';
-      };
-      var toInteger = function (value) {
-        var number = Number(value);
-        if (isNaN(number)) { return 0; }
-        if (number === 0 || !isFinite(number)) { return number; }
-        return (number > 0 ? 1 : -1) * Math.floor(Math.abs(number));
-      };
-      var maxSafeInteger = Math.pow(2, 53) - 1;
-      var toLength = function (value) {
-        var len = toInteger(value);
-        return Math.min(Math.max(len, 0), maxSafeInteger);
-      };
+// // polyfill for ancient iOS JS environment
+// // Production steps of ECMA-262, Edition 6, 22.1.2.1
+// if (!Array.from) {
+//     Array.from = (function () {
+//       var toStr = Object.prototype.toString;
+//       var isCallable = function (fn) {
+//         return typeof fn === 'function' || toStr.call(fn) === '[object Function]';
+//       };
+//       var toInteger = function (value) {
+//         var number = Number(value);
+//         if (isNaN(number)) { return 0; }
+//         if (number === 0 || !isFinite(number)) { return number; }
+//         return (number > 0 ? 1 : -1) * Math.floor(Math.abs(number));
+//       };
+//       var maxSafeInteger = Math.pow(2, 53) - 1;
+//       var toLength = function (value) {
+//         var len = toInteger(value);
+//         return Math.min(Math.max(len, 0), maxSafeInteger);
+//       };
   
-      // The length property of the from method is 1.
-      return function from(arrayLike/*, mapFn, thisArg */) {
-        // 1. Let C be the this value.
-        var C = this;
+//       // The length property of the from method is 1.
+//       return function from(arrayLike/*, mapFn, thisArg */) {
+//         // 1. Let C be the this value.
+//         var C = this;
   
-        // 2. Let items be ToObject(arrayLike).
-        var items = Object(arrayLike);
+//         // 2. Let items be ToObject(arrayLike).
+//         var items = Object(arrayLike);
   
-        // 3. ReturnIfAbrupt(items).
-        if (arrayLike == null) {
-          throw new TypeError('Array.from requires an array-like object - not null or undefined');
-        }
+//         // 3. ReturnIfAbrupt(items).
+//         if (arrayLike == null) {
+//           throw new TypeError('Array.from requires an array-like object - not null or undefined');
+//         }
   
-        // 4. If mapfn is undefined, then let mapping be false.
-        var mapFn = arguments.length > 1 ? arguments[1] : void undefined;
-        var T;
-        if (typeof mapFn !== 'undefined') {
-          // 5. else
-          // 5. a If IsCallable(mapfn) is false, throw a TypeError exception.
-          if (!isCallable(mapFn)) {
-            throw new TypeError('Array.from: when provided, the second argument must be a function');
-          }
+//         // 4. If mapfn is undefined, then let mapping be false.
+//         var mapFn = arguments.length > 1 ? arguments[1] : void undefined;
+//         var T;
+//         if (typeof mapFn !== 'undefined') {
+//           // 5. else
+//           // 5. a If IsCallable(mapfn) is false, throw a TypeError exception.
+//           if (!isCallable(mapFn)) {
+//             throw new TypeError('Array.from: when provided, the second argument must be a function');
+//           }
   
-          // 5. b. If thisArg was supplied, let T be thisArg; else let T be undefined.
-          if (arguments.length > 2) {
-            T = arguments[2];
-          }
-        }
+//           // 5. b. If thisArg was supplied, let T be thisArg; else let T be undefined.
+//           if (arguments.length > 2) {
+//             T = arguments[2];
+//           }
+//         }
   
-        // 10. Let lenValue be Get(items, "length").
-        // 11. Let len be ToLength(lenValue).
-        var len = toLength(items.length);
+//         // 10. Let lenValue be Get(items, "length").
+//         // 11. Let len be ToLength(lenValue).
+//         var len = toLength(items.length);
   
-        // 13. If IsConstructor(C) is true, then
-        // 13. a. Let A be the result of calling the [[Construct]] internal method 
-        // of C with an argument list containing the single item len.
-        // 14. a. Else, Let A be ArrayCreate(len).
-        var A = isCallable(C) ? Object(new C(len)) : new Array(len);
+//         // 13. If IsConstructor(C) is true, then
+//         // 13. a. Let A be the result of calling the [[Construct]] internal method 
+//         // of C with an argument list containing the single item len.
+//         // 14. a. Else, Let A be ArrayCreate(len).
+//         var A = isCallable(C) ? Object(new C(len)) : new Array(len);
   
-        // 16. Let k be 0.
-        var k = 0;
-        // 17. Repeat, while k < len… (also steps a - h)
-        var kValue;
-        while (k < len) {
-          kValue = items[k];
-          if (mapFn) {
-            A[k] = typeof T === 'undefined' ? mapFn(kValue, k) : mapFn.call(T, kValue, k);
-          } else {
-            A[k] = kValue;
-          }
-          k += 1;
-        }
-        // 18. Let putStatus be Put(A, "length", len, true).
-        A.length = len;
-        // 20. Return A.
-        return A;
-      };
-    }());
-  }
+//         // 16. Let k be 0.
+//         var k = 0;
+//         // 17. Repeat, while k < len… (also steps a - h)
+//         var kValue;
+//         while (k < len) {
+//           kValue = items[k];
+//           if (mapFn) {
+//             A[k] = typeof T === 'undefined' ? mapFn(kValue, k) : mapFn.call(T, kValue, k);
+//           } else {
+//             A[k] = kValue;
+//           }
+//           k += 1;
+//         }
+//         // 18. Let putStatus be Put(A, "length", len, true).
+//         A.length = len;
+//         // 20. Return A.
+//         return A;
+//       };
+//     }());
+//   }
 
 
 //incredible function that samples timeseries charts; developed by https://skemman.is/handle/1946/15343

@@ -147,6 +147,10 @@ static void draw_stock_data_single_view(){
   layer_add_child(window_layer, s_single_view_layer);
 }
 
+static void clear_face() {
+  layer_remove_from_parent(s_single_view_layer);
+  layer_destroy(s_single_view_layer);
+}
 
 static void in_received_handler(DictionaryIterator *iter, void *context) {
 
@@ -158,10 +162,10 @@ static void in_received_handler(DictionaryIterator *iter, void *context) {
     persist_write_string(StockMarketStatus, market_status);
   }
 
-  // Tuple *clear_face_tuple = dict_find (iter, ClearFace);
-  // if (clear_face_tuple) {
-  //   clearFace()
-  // }
+  Tuple *clear_face_tuple = dict_find (iter, ClearFace);
+  if (clear_face_tuple) {
+    clear_face();
+  }
 
   Tuple *display_mode_tuple = dict_find (iter, DisplayMode);
   if (display_mode_tuple) {

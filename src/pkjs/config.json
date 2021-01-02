@@ -60,6 +60,16 @@
             "value": "2"
           }
         ]
+      },
+      {
+        "type":"slider",
+        "label":"Refresh Interval (in minutes)",
+        "defaultValue":"5",
+        "min":"5",
+        "max":"60",
+        "step":"5",
+        "description":"How often should new data be sent to the watch?",
+        "messageKey":"RefreshInterval"
       }
     ]
   },
@@ -176,7 +186,6 @@
           }
         ]
       }
-
     ]
   },
   {

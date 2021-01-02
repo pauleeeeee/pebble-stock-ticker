@@ -43,6 +43,7 @@
       "StockMarketStatus": 201,
       "DitherStyle": 202,
       "AssetType": 203,
+      "RefreshInterval": 204,
       "ClearFace": 300
     },
     "resources": {
