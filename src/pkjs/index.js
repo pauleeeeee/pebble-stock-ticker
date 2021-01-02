@@ -20,7 +20,7 @@ var settings = {};
 //     DitherStyle: 2,
 //     AssetType: "crypto",
 //     CryptoSymbol: "btcusd-perpetual-future-inverse",
-//     CryptoPriceHistoryHorizon: "1m",
+//     CryptoPriceHistoryHorizon: "12h",
 //     RefreshInterval: "5"
 // };
 
@@ -91,8 +91,6 @@ function getCryptoPriceHistory(symbol){
   var url = "https://api.cryptowat.ch/markets/binance/" + symbol + "/ohlc";
   if (symbol == "btcusd-perpetual-future-inverse") {
     url = "https://api.cryptowat.ch/markets/bitmex/btcusd-perpetual-future-inverse/ohlc";
-  } else if (symbol == "xrpusd-perpetual-future-inverse"){
-    url = "https://api.cryptowat.ch/markets/bitmex/xrpusd-perpetual-future-quanto/ohlc";
   }
 
   var time = 0;
@@ -155,8 +153,20 @@ function getCryptoPriceHistory(symbol){
         var price = formatStockPrice(priceHistory[priceHistory.length-1]);
         var changePercent = "( " + Number(((priceHistory[priceHistory.length-1] - priceHistory[0]) / priceHistory[0])*100).toFixed(2) + "% )";
 
-        var graphHeight = 100;
+        var adjustment = 100;
+        var absPercent = Math.abs(Number(((priceHistory[priceHistory.length-1] - priceHistory[0]) / priceHistory[0])*100).toFixed(2));
         
+        console.log('absPercent')
+        console.log(absPercent);
+        
+        if (absPercent <= 1){
+          adjustment = 33;
+        } else if (absPercent > 1 && absPercent < 10){
+          adjustment = 33 + (absPercent / 100 * 66);
+        }
+
+        console.log('adjustment')
+        console.log(adjustment)
 
         // **********
         // **** VOL
@@ -174,7 +184,7 @@ function getCryptoPriceHistory(symbol){
         for (var i = 0; i < volumeHistory.length; i++){
             volHis.push({
                 x: i,
-                volume: volumeHistory[i] = Math.round( (volumeHistory[i] - volumeMin) / volumeRange * 20 )
+                volume: Math.round( (volumeHistory[i] - volumeMin) / volumeRange * 20 )
             })
         }
         volHis = largestTriangleThreeBuckets(volHis, 140, "x", "volume" );
@@ -200,7 +210,7 @@ function getCryptoPriceHistory(symbol){
         for (var i = 0; i < priceHistory.length; i++){
             priceHis.push({
                 x: i,
-                price: Math.round( (priceHistory[i] - priceMin) / priceRange * 100 )
+                price: Math.round( (priceHistory[i] - priceMin) / priceRange * adjustment )
             })
         }
         priceHis = largestTriangleThreeBuckets(priceHis, 140, "x", "price" );
@@ -777,87 +787,6 @@ function GoodFriday(Y) {  // calculates Easter Sunday and subtracts 2 days
         }
     return parseInt(M, 10) + '/' + parseInt(D, 10);  // return without any leading zeros
 }
-
-
-// // polyfill for ancient iOS JS environment
-// // Production steps of ECMA-262, Edition 6, 22.1.2.1
-// if (!Array.from) {
-//     Array.from = (function () {
-//       var toStr = Object.prototype.toString;
-//       var isCallable = function (fn) {
-//         return typeof fn === 'function' || toStr.call(fn) === '[object Function]';
-//       };
-//       var toInteger = function (value) {
-//         var number = Number(value);
-//         if (isNaN(number)) { return 0; }
-//         if (number === 0 || !isFinite(number)) { return number; }
-//         return (number > 0 ? 1 : -1) * Math.floor(Math.abs(number));
-//       };
-//       var maxSafeInteger = Math.pow(2, 53) - 1;
-//       var toLength = function (value) {
-//         var len = toInteger(value);
-//         return Math.min(Math.max(len, 0), maxSafeInteger);
-//       };
-  
-//       // The length property of the from method is 1.
-//       return function from(arrayLike/*, mapFn, thisArg */) {
-//         // 1. Let C be the this value.
-//         var C = this;
-  
-//         // 2. Let items be ToObject(arrayLike).
-//         var items = Object(arrayLike);
-  
-//         // 3. ReturnIfAbrupt(items).
-//         if (arrayLike == null) {
-//           throw new TypeError('Array.from requires an array-like object - not null or undefined');
-//         }
-  
-//         // 4. If mapfn is undefined, then let mapping be false.
-//         var mapFn = arguments.length > 1 ? arguments[1] : void undefined;
-//         var T;
-//         if (typeof mapFn !== 'undefined') {
-//           // 5. else
-//           // 5. a If IsCallable(mapfn) is false, throw a TypeError exception.
-//           if (!isCallable(mapFn)) {
-//             throw new TypeError('Array.from: when provided, the second argument must be a function');
-//           }
-  
-//           // 5. b. If thisArg was supplied, let T be thisArg; else let T be undefined.
-//           if (arguments.length > 2) {
-//             T = arguments[2];
-//           }
-//         }
-  
-//         // 10. Let lenValue be Get(items, "length").
-//         // 11. Let len be ToLength(lenValue).
-//         var len = toLength(items.length);
-  
-//         // 13. If IsConstructor(C) is true, then
-//         // 13. a. Let A be the result of calling the [[Construct]] internal method 
-//         // of C with an argument list containing the single item len.
-//         // 14. a. Else, Let A be ArrayCreate(len).
-//         var A = isCallable(C) ? Object(new C(len)) : new Array(len);
-  
-//         // 16. Let k be 0.
-//         var k = 0;
-//         // 17. Repeat, while k < len… (also steps a - h)
-//         var kValue;
-//         while (k < len) {
-//           kValue = items[k];
-//           if (mapFn) {
-//             A[k] = typeof T === 'undefined' ? mapFn(kValue, k) : mapFn.call(T, kValue, k);
-//           } else {
-//             A[k] = kValue;
-//           }
-//           k += 1;
-//         }
-//         // 18. Let putStatus be Put(A, "length", len, true).
-//         A.length = len;
-//         // 20. Return A.
-//         return A;
-//       };
-//     }());
-//   }
 
 
 //incredible function that samples timeseries charts; developed by https://skemman.is/handle/1946/15343
