@@ -1,5 +1,5 @@
 {
-  "name": "stock-ticker",
+  "name": "pebble-stock-ticker",
   "author": "swansswansswansswanssosoft",
   "version": "1.0.0",
   "keywords": [
@@ -16,7 +16,7 @@
     "pebble-clay": "^1.0.4"
   },
   "pebble": {
-    "displayName": "CryptoGraph",
+    "displayName": "Ticker",
     "capabilities": [
       "configurable"
     ],
@@ -59,6 +59,12 @@
           "name": "DOT_DIGITAL_26",
           "targetPlatforms": null,
           "type": "font"
+        },
+        {
+          "menuIcon": true,
+          "type": "png",
+          "name": "IMAGE_MENU_ICON",
+          "file": "img/menu_icon.png"
         }
       ]
     }

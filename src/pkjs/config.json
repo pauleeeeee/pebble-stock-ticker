@@ -12,7 +12,7 @@
       },
       {
         "type": "text",
-        "defaultValue": "You can use this watchface to display the current and historical price of most cryptocurriences as well as most publicly traded stocks on the major exchanges. Unfortunately, real-time data is not currently available for stocks (it is always day old)."
+        "defaultValue": "You can use this watchface to display the current and historical price of most cryptocurrencies as well as most publicly traded stocks on the major exchanges. Unfortunately, real-time data is not currently available for stocks (it is always day old)."
       }
     ]
   },

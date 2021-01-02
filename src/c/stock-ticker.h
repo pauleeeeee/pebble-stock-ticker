@@ -2,8 +2,8 @@
 #include <pebble.h>
 
 typedef struct {
-    char symbol[6];
-    char price[8];
+    char symbol[12];
+    char price[12];
     char price_change[12];
     char volume[8];
 } Stock;

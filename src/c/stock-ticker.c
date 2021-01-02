@@ -261,6 +261,7 @@ static void prv_window_load(Window *window) {
   //create bluetooth indicator
   s_bluetooth_layer = bluetooth_layer_create();
   bluetooth_set_position(GPoint(6, 4));
+  //bluetooth_set_position(GPoint(45, 4));
   bluetooth_vibe_disconnect(false);
   bluetooth_vibe_connect(false);
   //void bluetooth_set_colors(GColor connected_circle, GColor connected_icon, GColor disconnected_circle, GColor disconnected_icon);

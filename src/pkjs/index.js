@@ -12,12 +12,12 @@ var settings = {};
 // var settings = {
 //     APIKey: "",
 //     DisplayMode: 0,
-//     StockSymbol: "TSLA",
+//     StockMarketSymbol: "TSLA",
 //     StockPriceHistoryHorizon: "1month",
-//     DitherStyle: 2,
+//     DitherStyle: 1,
 //     AssetType: "crypto",
-//     CryptoSymbol: "btcusd-perpetual-future-inverse",
-//     CryptoPriceHistoryHorizon: "1y",
+//     CryptoSymbol: "xrpeur",
+//     CryptoPriceHistoryHorizon: "2.5h",
 //     RefreshInterval: "5"
 // };
 
