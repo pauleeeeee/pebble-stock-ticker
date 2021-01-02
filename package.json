@@ -16,7 +16,7 @@
     "pebble-clay": "^1.0.4"
   },
   "pebble": {
-    "displayName": "Stock Ticker",
+    "displayName": "CryptoGraph",
     "capabilities": [
       "configurable"
     ],

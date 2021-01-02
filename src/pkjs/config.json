@@ -208,9 +208,9 @@
       },
       {
         "type": "input",
-        "messageKey": "StockSymbol",
+        "messageKey": "StockMarketSymbol",
         "label": "Stock Symbol",
-        "defaultValue": "VOO",
+        "defaultValue": "",
         "description": "Enter the stock symbol of your choice. Make sure the symbol is spelled correctly and does contain any extra characters like trailing white spaces. You can add pretty much any publicly traded equity from the major exchanges."
       },
       {
@@ -221,20 +221,12 @@
         "description": "How far back do you want to see the price history? Price histories are always adjusted for splits. Note: the percent change reflects the change since the beginning of the price history which can be influenced by the number of market holidays present in recent history.",
         "options": [
           {
-            "label": "5 days",
-            "value": "5days"
-          },
-          {
             "label": "1 month",
             "value": "1month"
           },
           {
             "label": "1 year",
             "value": "1year"
-          },
-          {
-            "label": "5 years",
-            "value": "5years"
           }
         ]
       }
@@ -243,5 +235,22 @@
   {
     "type": "submit",
     "defaultValue": "save"
+  },
+  {
+    "type": "heading",
+    "defaultValue": "Acknowledgements"
+  },
+  {
+    "type": "section",
+    "items": [
+      {
+        "type": "text",
+        "defaultValue": "Thanks to Matthew Reiss for the dithering library, my buddy Bryan for his input on the watchface appearance, and the Rebble Discord community members for additional feedback and testing."
+      },
+      {
+        "type": "text",
+        "defaultValue": "In the future I plan to update this watchface with more configuration settings (colors etc), and of course real time stock market data support. Feature suggestions are welcome on the GitHub page for this project. This project was funded in part by a Rebble grant. Thanks Rebble Alliance!"
+      }
+    ]
   }
 ]

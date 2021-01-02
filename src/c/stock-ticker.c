@@ -294,7 +294,7 @@ static void prv_window_load(Window *window) {
   text_layer_set_font(s_market_status_text_layer, s_small_font);
   text_layer_set_text_alignment(s_market_status_text_layer, GTextAlignmentLeft);
   layer_add_child(window_layer, text_layer_get_layer(s_market_status_text_layer));
-  text_layer_set_text(s_market_status_text_layer, "loading...");
+  text_layer_set_text(s_market_status_text_layer, market_status);
 
   //read persisted data
   if(persist_exists(StockMarketStatus)){

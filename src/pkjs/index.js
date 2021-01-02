@@ -7,9 +7,6 @@ var clay = new Clay(clayConfig, null, { autoHandleEvents: true });
 var _ = require('lodash');
 var moment = require('moment-timezone');
 
-//include MessageQueue system
-// var MessageQueue = require('message-queue-pebble');
-
 //declare global settings variable
 var settings = {};
 // var settings = {
@@ -20,11 +17,11 @@ var settings = {};
 //     DitherStyle: 2,
 //     AssetType: "crypto",
 //     CryptoSymbol: "btcusd-perpetual-future-inverse",
-//     CryptoPriceHistoryHorizon: "12h",
+//     CryptoPriceHistoryHorizon: "1y",
 //     RefreshInterval: "5"
 // };
 
-
+//create 'lastCall' variable for use later
 var lastCall = 0;
 
 //on load function
@@ -32,11 +29,12 @@ Pebble.addEventListener("ready",
     function(e) {
       //on load, get settings from local storage if they have already been set by clay. If they have not been set, define settings as a blank object.
       settings = JSON.parse(localStorage.getItem('clay-settings')) || {};
-      console.log(JSON.stringify(settings));
+      //console.log(JSON.stringify(settings));
 
+      //get the last call time (unix mili)
       lastCall = localStorage.getItem('lastCall') || 0;
 
-      //if settings is a blank object, send a configuration notification to the user
+      //if settings is a blank object, send a configuration notification to the user; otherwise start the fetch loop
       if (settings == {}){
         Pebble.sendAppMessage({
           "StockMarketStatus": "needs configuration"
@@ -47,14 +45,15 @@ Pebble.addEventListener("ready",
     }
 );
 
+//basically check to see if enough time has past since the last call; runs once a minute
 function fetchLoop(){
   var now = new Date().getTime();
   lastCall = localStorage.getItem('lastCall') || 0;
   var interval = settings.RefreshInterval * 60000;
   if ( now - lastCall > interval ) {
-    console.log('updating');
+    //console.log('updating');
     if (settings.AssetType == "stock") {
-      getStockPriceHistory(settings.StockSymbol);
+      getStockPriceHistory(settings.StockMarketSymbol);
     } else if (settings.AssetType == "crypto") {
       getCryptoPriceHistory(settings.CryptoSymbol);
     }
@@ -67,20 +66,23 @@ Pebble.addEventListener('showConfiguration', function(e) {
     Pebble.openURL(clay.generateUrl());
 });
 
+//when the config page is closed....
 Pebble.addEventListener("webviewclosed", function(e){
-    console.log('from web view closed:');
-    //// settings = clay.getSettings(e.response, true);
-    //// localStorage.setItem("settings", JSON.stringify(settings));
+    //console.log('from web view closed:');
     settings = JSON.parse(localStorage.getItem('clay-settings'));
-    console.log(JSON.stringify(settings));
+    //console.log(JSON.stringify(settings));
+
+    //send a little bit to the Pebble
     Pebble.sendAppMessage({
         StockMarketStatus: "loading...",
         DitherStyle: Number(settings.DitherStyle),
-        ClearFace: 1
+        ClearFace: 1,
+        StockSymbol: (settings.AssetType == "crypto" ? translateCryptoSymbol(settings.CryptoSymbol) : settings.StockMarketSymbol)
     });
 
+    //manually fetch the data
     if (settings.AssetType == "stock") {
-      getStockPriceHistory(settings.StockSymbol);
+      getStockPriceHistory(settings.StockMarketSymbol);
     } else if (settings.AssetType == "crypto") {
       getCryptoPriceHistory(settings.CryptoSymbol)
     }
@@ -88,7 +90,11 @@ Pebble.addEventListener("webviewclosed", function(e){
 });
 
 function getCryptoPriceHistory(symbol){
+
+  //create URL
   var url = "https://api.cryptowat.ch/markets/binance/" + symbol + "/ohlc";
+  
+  //get BTC from Bitmex instead of Binance for its superior price and volume data
   if (symbol == "btcusd-perpetual-future-inverse") {
     url = "https://api.cryptowat.ch/markets/bitmex/btcusd-perpetual-future-inverse/ohlc";
   }
@@ -96,6 +102,8 @@ function getCryptoPriceHistory(symbol){
   var time = 0;
   var period = 0;
 
+  //use moment to get the unix time stamp in the past
+  //period refers to the candle stick period documented at the https://docs.cryptowat.ch/ API
   switch(settings.CryptoPriceHistoryHorizon) {
     case "2.5h": time = moment().subtract(2.5, "hours").unix(); period = 60; break;
     case "12h": time = moment().subtract(12, "hours").unix(); period = 300; break;
@@ -106,25 +114,26 @@ function getCryptoPriceHistory(symbol){
     case "5y": time = moment().subtract(5, "years").unix(); period = 604800; break;
   }
 
+  //add params to URL
   url += "?after=" + time + "&periods=" + period;
 
+  //create, open, and configure XML request
   var req = new XMLHttpRequest();
-
   req.open('GET', url, true);
-
   req.onload = function(e) {
     if (req.readyState == 4) {
       // 200 - HTTP OK
       if(req.status == 200) {
         var response = JSON.parse(req.responseText);
-        console.log(JSON.stringify(response));
+        //console.log(JSON.stringify(response));
 
         var history = response.result[period+""];
-        console.log(history.length);
+        //console.log(history.length);
 
         var priceHistory = [];
         var volumeHistory = [];
 
+        //sometimes a currency is so new there is not 144 datapoints - this backfills the data with an arbitrary value close to the minimum 
         if (history.length < 144) {
           var backfill = 144 - history.length;
           var temp = [];
@@ -153,25 +162,27 @@ function getCryptoPriceHistory(symbol){
         var price = formatStockPrice(priceHistory[priceHistory.length-1]);
         var changePercent = "( " + Number(((priceHistory[priceHistory.length-1] - priceHistory[0]) / priceHistory[0])*100).toFixed(2) + "% )";
 
+        //we don't want the graph going crazy with small changes in price (like .5% for example) so this function basically helps scale the graph appropriately. Any change in price for an asset that reaches 10% will fill the full Pebble
         var adjustment = 100;
         var absPercent = Math.abs(Number(((priceHistory[priceHistory.length-1] - priceHistory[0]) / priceHistory[0])*100).toFixed(2));
         
-        console.log('absPercent')
-        console.log(absPercent);
+        //console.log('absPercent')
+        //console.log(absPercent);
         
         if (absPercent <= 1){
           adjustment = 33;
         } else if (absPercent > 1 && absPercent < 10){
-          adjustment = 33 + (absPercent / 100 * 66);
+          adjustment = 33 + (absPercent / 10 * 66);
         }
 
-        console.log('adjustment')
-        console.log(adjustment)
+        //console.log('adjustment')
+        //console.log(adjustment)
 
         // **********
         // **** VOL
         // **********
 
+        //take the volume data and scale it to 20 pixels
         var volumeMax = volumeHistory.reduce(function(a, b) {
             return Math.max(a, b);
         });
@@ -192,7 +203,7 @@ function getCryptoPriceHistory(symbol){
         for (var i = 0; i < volHis.length; i++) {
             volumeHistory.push(volHis[i].volume);
         }
-        console.log(volumeHistory);
+        //console.log(volumeHistory);
 
         // **********
         // **** PRICE
@@ -232,10 +243,11 @@ function getCryptoPriceHistory(symbol){
           StockMarketStatus: settings.CryptoPriceHistoryHorizon + " price history"
         }
 
-        console.log(JSON.stringify(message));
+        //console.log(JSON.stringify(message));
         Pebble.sendAppMessage(message, localStorage.setItem("lastCall", JSON.stringify(new Date().getTime())));
 
-
+      } else {
+        Pebble.sendAppMessage({StockMarketStatus:"last update failed"});
       }
     }
   }
@@ -278,8 +290,7 @@ function translateCryptoSymbol(symbol){
     case "doteur":
       translated = "DOT";
       break;  
-}
-
+  }
   return translated;
 }
 
@@ -305,7 +316,7 @@ function getStockPriceHistory(symbol){
                         "StockVolume": filterNumber(volume),
                         "StockMarketStatus": getMarketStatus()
                     }
-                    console.log(JSON.stringify(stockData));
+                    //console.log(JSON.stringify(stockData));
                     Pebble.sendAppMessage(stockData);
                 }
             }
@@ -318,7 +329,7 @@ function getStockPriceHistory(symbol){
               // 200 - HTTP OK
               if(req.status == 200) {
                 var response = JSON.parse(req.responseText);
-                //console.log(JSON.stringify(response));
+                ////console.log(JSON.stringify(response));
 
                 
                 var his = _.values(response["Time Series (30min)"]);
@@ -328,12 +339,12 @@ function getStockPriceHistory(symbol){
                 //return only entries in the normal trading window ('market open')
                 for (var i = 0; i < dates.length; i++) {
                   if (checkMarketStatus(dates[i]) == "market is open") {
-                    console.log(dates[i]);
+                    //console.log(dates[i]);
                     history.push(his[i]);
                   }
                 }
 
-                console.log(JSON.stringify(history[history.length-1]))
+                //console.log(JSON.stringify(history[history.length-1]))
                 
                 //console.log(history.length);
 
@@ -356,8 +367,22 @@ function getStockPriceHistory(symbol){
 
                 var changePercent = "( " + Number(((priceHistory[0] - priceHistory[priceHistory.length-1]) / priceHistory[priceHistory.length-1])*100).toFixed(2) + "% )";
 
-                console.log('pricehistory.length-1')
-                console.log(priceHistory[priceHistory.length-1]);
+                //console.log('pricehistory.length-1')
+                //console.log(priceHistory[priceHistory.length-1]);
+
+                //we don't want the graph going crazy with small changes in price (like .5% for example) so this function basically helps scale the graph appropriately. Any change in price for an asset that reaches 10% will fill the full Pebble
+                var adjustment = 100;
+                var absPercent = Number(((priceHistory[0] - priceHistory[priceHistory.length-1]) / priceHistory[priceHistory.length-1])*100).toFixed(2);
+                
+                //console.log('absPercent')
+                //console.log(absPercent);
+                
+                if (absPercent <= 1){
+                  adjustment = 33;
+                } else if (absPercent > 1 && absPercent < 10){
+                  adjustment = 33 + (absPercent / 10 * 66);
+                }
+
 
                 priceHistory.reverse();
                 volumeHistory.reverse();
@@ -386,7 +411,7 @@ function getStockPriceHistory(symbol){
                 for (var i = 0; i < volHis.length; i++) {
                     volumeHistory.push(volHis[i].volume);
                 }
-                console.log(volumeHistory);
+                //console.log(volumeHistory);
 
                 // **********
                 // **** PRICE
@@ -404,7 +429,7 @@ function getStockPriceHistory(symbol){
                 for (var i = 0; i < priceHistory.length; i++){
                     priceHis.push({
                         x: i,
-                        price: priceHistory[i] = Math.round( (priceHistory[i] - priceMin) / priceRange * 100 )
+                        price: priceHistory[i] = Math.round( (priceHistory[i] - priceMin) / priceRange * adjustment )
                     })
                 }
                 priceHis = largestTriangleThreeBuckets(priceHis, 140, "x", "price" );
@@ -412,7 +437,7 @@ function getStockPriceHistory(symbol){
                 for (var i = 0; i < priceHis.length; i++) {
                     priceHistory.push(110-priceHis[i].price);
                 }
-                console.log(priceHistory);
+                //console.log(priceHistory);
 
                 // **********
                 // **** SEND
@@ -425,9 +450,11 @@ function getStockPriceHistory(symbol){
                   StockPriceHistory: priceHistory,
                   StockMarketStatus: getMarketStatus()
                 }
-                console.log(JSON.stringify(message));
-                Pebble.sendAppMessage(message);
-                
+                //console.log(JSON.stringify(message));
+                Pebble.sendAppMessage(message, localStorage.setItem("lastCall", JSON.stringify(new Date().getTime())));
+
+              } else {
+                Pebble.sendAppMessage({StockMarketStatus:"last update failed"});
               }
             }
         }
@@ -464,9 +491,9 @@ function getStockPriceHistory(symbol){
 
                 var changePercent = "( " + Number(((priceHistory[0] - priceHistory[priceHistory.length-1]) / priceHistory[priceHistory.length-1])*100).toFixed(2) + "% )";
                 
-                console.log('oldest date')
-                console.log(JSON.stringify(_.keys(response["Time Series (Daily)"])[priceHistory.length-1]));
-                console.log(JSON.stringify(history[priceHistory.length-1]));
+                //console.log('oldest date')
+                //console.log(JSON.stringify(_.keys(response["Time Series (Daily)"])[priceHistory.length-1]));
+                //console.log(JSON.stringify(history[priceHistory.length-1]));
 
                 priceHistory.reverse();
                 volumeHistory.reverse();
@@ -495,7 +522,7 @@ function getStockPriceHistory(symbol){
                 for (var i = 0; i < volHis.length; i++) {
                     volumeHistory.push(volHis[i].volume);
                 }
-                console.log(volumeHistory);
+                //console.log(volumeHistory);
 
                 // **********
                 // **** PRICE
@@ -521,7 +548,7 @@ function getStockPriceHistory(symbol){
                 for (var i = 0; i < priceHis.length; i++) {
                     priceHistory.push(110-priceHis[i].price);
                 }
-                console.log(priceHistory);
+                //console.log(priceHistory);
 
                 // **********
                 // **** SEND
@@ -534,8 +561,10 @@ function getStockPriceHistory(symbol){
                   StockPriceHistory: priceHistory,
                   StockMarketStatus: getMarketStatus()
                 }
-                console.log(JSON.stringify(message));
-                Pebble.sendAppMessage(message);
+                //console.log(JSON.stringify(message));
+                Pebble.sendAppMessage(message, localStorage.setItem("lastCall", JSON.stringify(new Date().getTime())));
+              } else {
+                Pebble.sendAppMessage({StockMarketStatus:"last update failed"});
               }
             }
         }
@@ -556,44 +585,44 @@ function getStockPriceHistory(symbol){
 }
 
 
-function getSimpleStockQuote(symbol){
-  var req = new XMLHttpRequest();
-  req.open('GET', 'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
-  req.onload = function(e) {
-      if (req.readyState == 4) {
-        // 200 - HTTP OK
-          if(req.status == 200) {
-            var response = JSON.parse(req.responseText);
-            console.log(JSON.stringify(response));
+// function getSimpleStockQuote(symbol){
+//   var req = new XMLHttpRequest();
+//   req.open('GET', 'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=' + symbol + '&apikey=' + settings.APIKey, true);
+//   req.onload = function(e) {
+//       if (req.readyState == 4) {
+//         // 200 - HTTP OK
+//           if(req.status == 200) {
+//             var response = JSON.parse(req.responseText);
+//             //console.log(JSON.stringify(response));
 
-            //make some more reasonable convenience variables
-            var price = Number(response["Global Quote"]["05. price"]);
-            price = formatStockPrice((price));
+//             //make some more reasonable convenience variables
+//             var price = Number(response["Global Quote"]["05. price"]);
+//             price = formatStockPrice((price));
 
-            var changePercent = String(response["Global Quote"]["10. change percent"]);
-            changePercent = formatChangePercent(changePercent);
-            // changePercent = Number(changePercent.slice(0, changePercent.length-1));
-            // changePercent = changePercent.toFixed(2);
-            var volume = filterNumber(response["Global Quote"]["06. volume"]);
+//             var changePercent = String(response["Global Quote"]["10. change percent"]);
+//             changePercent = formatChangePercent(changePercent);
+//             // changePercent = Number(changePercent.slice(0, changePercent.length-1));
+//             // changePercent = changePercent.toFixed(2);
+//             var volume = filterNumber(response["Global Quote"]["06. volume"]);
 
-            var stockData = {
-                StockSymbol: symbol,
-                StockPrice: price,
-                StockPriceChange: changePercent,
-                StockVolume: volume,
-                StockMarketStatus: getMarketStatus()
-            }
+//             var stockData = {
+//                 StockSymbol: symbol,
+//                 StockPrice: price,
+//                 StockPriceChange: changePercent,
+//                 StockVolume: volume,
+//                 StockMarketStatus: getMarketStatus()
+//             }
 
-            console.log(JSON.stringify(stockData));
+//             //console.log(JSON.stringify(stockData));
 
-            Pebble.sendAppMessage(stockData);
+//             Pebble.sendAppMessage(stockData);
 
-          }
-      }
-  }
-  req.send();
+//           }
+//       }
+//   }
+//   req.send();
 
-}
+// }
 
 
 // function requestMultiStockData(){

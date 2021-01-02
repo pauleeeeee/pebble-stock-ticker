@@ -19,5 +19,4 @@ typedef struct {
 #define StockMarketStatus 201
 #define DitherStyle 202
 #define AssetType 203
-
 #define ClearFace 300
